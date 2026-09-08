@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>دفتر خرج خانه</title>
+<meta name="theme-color" content="#1E3A34">
+<meta name="description" content="حساب‌وکتاب ماهانه هزینه و واریزی‌های خانواده">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="دفتر خرج">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper: #EDE6D6;
+    --paper-2: #E3D9C2;
+    --ink: #2B2620;
+    --ink-soft: #6B6255;
+    --navy: #1E3A34;
+    --navy-2: #142823;
+    --gold: #B8863B;
+    --gold-soft: #D9B876;
+    --brick: #A6462E;
+    --line: #C9BC9C;
+    --good: #2F6B4F;
+    --bad: #A6462E;
+    --card-shadow: 0 1px 0 rgba(43,38,32,0.06);
+  }
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ height: 100%; }
+  body{
+    margin:0;
+    font-family: 'Vazirmatn', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    direction: rtl;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .wrap{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 18px 16px 60px;
+  }
+
+  /* ---------- Header / Ledger title ---------- */
+  .ledger-head{
+    background: var(--navy);
+    color: var(--paper);
+    border-radius: 14px;
+    padding: 20px 18px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .ledger-head::before{
+    content:"";
+    position:absolute;
+    inset:6px;
+    border: 1px solid rgba(217,184,118,0.35);
+    border-radius: 9px;
+    pointer-events:none;
+  }
+  .ledger-head h1{
+    margin:0 0 4px;
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+  .ledger-head p{
+    margin:0;
+    font-size: 12.5px;
+    color: var(--gold-soft);
+    font-weight: 500;
+  }
+  .month-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:14px;
+  }
+  .month-row select{
+    flex:1;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(217,184,118,0.4);
+    color: var(--paper);
+    font-family:inherit;
+    font-size: 14px;
+    padding: 9px 10px;
+    border-radius: 8px;
+  }
+  .month-row select option{ color:#111; }
+
+  /* ---------- Section cards ---------- */
+  .card{
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 14px 16px;
+    margin-bottom: 14px;
+    box-shadow: var(--card-shadow);
+  }
+  .card h2{
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 12px;
+    color: var(--navy);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card h2::before{
+    content:"";
+    width:5px; height:5px;
+    background: var(--gold);
+    border-radius:50%;
+    display:inline-block;
+  }
+
+  /* ---------- Contributors ---------- */
+  .contributors{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .contrib-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 9px 11px;
+  }
+  .contrib-row .name{
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 52px;
+  }
+  .contrib-row input{
+    flex:1;
+    border:none;
+    background: transparent;
+    text-align:left;
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight:600;
+    color: var(--navy);
+    padding: 4px 2px;
+    direction: ltr;
+  }
+  .contrib-row input:focus{ outline:none; }
+  .contrib-row .unit{ font-size:11.5px; color:var(--ink-soft); }
+
+  .income-total{
+    margin-top: 12px;
+    display:flex;
+    justify-content: space-between;
+    align-items:baseline;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .income-total b{
+    color: var(--good);
+    font-size: 16px;
+  }
+
+  /* ---------- Add expense form ---------- */
+  .form-grid{
+    display:flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .form-grid select, .form-grid input{
+    width:100%;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+  }
+  .form-grid input::placeholder{ color: #9c927e; }
+  .two-col{ display:flex; gap:9px; }
+  .two-col > *{ flex:1; }
+  .add-btn{
+    margin-top: 2px;
+    background: var(--navy);
+    color: var(--paper);
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .add-btn:active{ background: var(--navy-2); }
+  .form-grid textarea{
+    width:100%;
+    font-family: inherit;
+    font-size: 13.5px;
+    padding: 10px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    resize: vertical;
+    direction: rtl;
+  }
+  .form-grid textarea::placeholder{ color: #9c927e; }
+  #smsResult:empty{ display:none; }
+  #smsResult{
+    background: var(--paper);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 10px 11px;
+    font-size: 12.5px;
+    line-height: 1.9;
+  }
+  #smsResult .sms-line{ margin-bottom: 4px; }
+  #smsResult .sms-warn{ color: var(--brick); font-weight:600; }
+  #smsResult .sms-ok{ color: var(--good); font-weight:600; }
+  .sms-choice-row{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .sms-choice-btn{
+    background: var(--navy);
+    color: var(--paper);
+    border:none;
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .sms-choice-btn.secondary{
+    background: transparent;
+    border: 1px solid var(--navy);
+    color: var(--navy);
+  }
+  .jalali-date-row{ display:flex; gap:6px; }
+  .jalali-date-row select{
+    flex:1;
+    min-width:0;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px 4px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    text-align:center;
+  }
+
+  /* ---------- Expense list ---------- */
+  .expense-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .expense-item:last-child{ border-bottom:none; }
+  .cat-dot{
+    width:9px; height:9px;
+    border-radius: 3px;
+    flex-shrink:0;
+  }
+  .expense-info{ flex:1; min-width:0; }
+  .expense-info .cat{ font-size:13.5px; font-weight:600; }
+  .expense-info .note{ font-size:11.5px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .expense-amt{
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--brick);
+    white-space:nowrap;
+  }
+  .del-btn{
+    border:none; background:none; color:#9c927e;
+    font-size:16px; cursor:pointer; padding:2px 4px;
+    line-height:1;
+  }
+  .empty-note{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 13px;
+    padding: 14px 0 6px;
+  }
+
+  /* ---------- Category breakdown ---------- */
+  .cat-row{
+    margin-bottom: 10px;
+  }
+  .cat-row .cat-top{
+    display:flex; justify-content:space-between;
+    font-size: 12.5px;
+    margin-bottom: 4px;
+  }
+  .cat-row .cat-top .lbl{ font-weight:600; display:flex; align-items:center; gap:6px; }
+  .cat-row .cat-top .val{ color: var(--ink-soft); font-weight:600; }
+  .bar-bg{
+    background: var(--paper);
+    border-radius: 5px;
+    height: 7px;
+    overflow:hidden;
+    border: 1px solid var(--line);
+  }
+  .bar-fill{
+    height:100%;
+    border-radius: 5px;
+  }
+
+  /* ---------- Summary ---------- */
+  .summary-grid{
+    display:flex;
+    gap:10px;
+  }
+  .summary-box{
+    flex:1;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 10px;
+    text-align:center;
+  }
+  .summary-box .lbl{ font-size:11px; color:var(--ink-soft); margin-bottom:4px; }
+  .summary-box .num{ font-size:15px; font-weight:800; }
+  .summary-box.income .num{ color: var(--good); }
+  .summary-box.expense .num{ color: var(--brick); }
+  .balance-pos{ color: var(--good) !important; }
+  .balance-neg{ color: var(--brick) !important; }
+
+  .footnote{
+    text-align:center;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+
+  #installBar{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background: var(--gold-soft);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+  }
+  #installBar button{
+    background: var(--navy);
+    color: var(--paper);
+    border:none;
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight:700;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="installBar">
+    <span>این برنامه را روی صفحه اصلی گوشی نصب کنید</span>
+    <button id="installBtn">نصب</button>
+  </div>
+
+  <div class="ledger-head">
+    <h1>دفتر خرج خانه</h1>
+    <p>حساب‌وکتاب ماهانه خانواده</p>
+    <div class="month-row">
+      <select id="monthSelect"></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>واریزی‌های این ماه</h2>
+    <div class="contributors" id="contributorsBox"></div>
+    <div class="income-total">
+      <span>جمع واریزی</span>
+      <b id="incomeTotalTxt">۰ تومان</b>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>دریافت خودکار از پیامک بانک</h2>
+    <div class="form-grid">
+      <textarea id="smsInput" rows="3" placeholder="متن پیامک بانک را اینجا کپی و پیست کنید"></textarea>
+      <button class="add-btn" id="parseSmsBtn" type="button">استخراج از پیامک</button>
+      <div id="smsResult"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ثبت هزینه جدید</h2>
+    <div class="form-grid">
+      <select id="catSelect"></select>
+      <input id="amountInput" type="number" inputmode="numeric" placeholder="مبلغ (تومان)">
+      <div class="jalali-date-row">
+        <select id="jDaySelect"></select>
+        <select id="jMonthSelect"></select>
+        <select id="jYearSelect"></select>
+      </div>
+      <input id="noteInput" type="text" placeholder="توضیح (اختیاری)">
+      <button class="add-btn" id="addBtn">افزودن هزینه</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>هزینه‌های ثبت‌شده</h2>
+    <div id="expenseList"></div>
+  </div>
+
+  <div class="card">
+    <h2>سهم هر دسته از هزینه‌ها</h2>
+    <div id="catBreakdown"></div>
+  </div>
+
+  <div class="card">
+    <h2>جمع‌بندی ماه</h2>
+    <div class="summary-grid">
+      <div class="summary-box income">
+        <div class="lbl">واریزی</div>
+        <div class="num" id="sumIncome">۰</div>
+      </div>
+      <div class="summary-box expense">
+        <div class="lbl">هزینه</div>
+        <div class="num" id="sumExpense">۰</div>
+      </div>
+      <div class="summary-box balance">
+        <div class="lbl">مانده</div>
+        <div class="num" id="sumBalance">۰</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">اطلاعات فقط روی همین گوشی شما ذخیره می‌شود</div>
+</div>
+
+<script>
+(function(){
+  const CATEGORIES = [
+    { key: 'khorak', label: 'خوراک', color: '#B8863B' },
+    { key: 'tafrih', label: 'تفریح', color: '#5C7A6B' },
+    { key: 'mosaferat', label: 'مسافرت', color: '#3E6B8A' },
+    { key: 'ab', label: 'قبض آب', color: '#4A8FA8' },
+    { key: 'bargh', label: 'قبض برق', color: '#C9A227' },
+    { key: 'telefon', label: 'قبض تلفن', color: '#7A5C8A' },
+    { key: 'maliat', label: 'مالیات شهرداری', color: '#A6462E' },
+    { key: 'sayer', label: 'سایر', color: '#8A7F6A' },
+  ];
+  const CONTRIBUTORS = [
+    { key: 'maryam', label: 'مریم' },
+    { key: 'sara', label: 'سارا' },
+    { key: 'parsa', label: 'پارسا' },
+    { key: 'reza', label: 'رضا' },
+    { key: 'azertim', label: 'AZERTIM' },
+  ];
+
+  const STORAGE_KEY = 'family-budget-v1';
+  let data = { months: {} };
+  let savedAccount = null;
+
+  function loadSavedAccount(){
+    try{ savedAccount = localStorage.getItem(ACCOUNT_STORAGE_KEY) || null; }
+    catch(e){ savedAccount = null; }
+  }
+
+  function saveAccountNumber(acc){
+    savedAccount = acc;
+    try{ localStorage.setItem(ACCOUNT_STORAGE_KEY, acc); }
+    catch(e){}
+  }
+
+  const monthSelect = document.getElementById('monthSelect');
+  const contributorsBox = document.getElementById('contributorsBox');
+  const catSelect = document.getElementById('catSelect');
+  const amountInput = document.getElementById('amountInput');
+  const jDaySelect = document.getElementById('jDaySelect');
+  const jMonthSelect = document.getElementById('jMonthSelect');
+  const jYearSelect = document.getElementById('jYearSelect');
+  const noteInput = document.getElementById('noteInput');
+  const addBtn = document.getElementById('addBtn');
+  const smsInput = document.getElementById('smsInput');
+  const parseSmsBtn = document.getElementById('parseSmsBtn');
+  const smsResult = document.getElementById('smsResult');
+  const expenseList = document.getElementById('expenseList');
+  const catBreakdown = document.getElementById('catBreakdown');
+  const incomeTotalTxt = document.getElementById('incomeTotalTxt');
+  const sumIncome = document.getElementById('sumIncome');
+  const sumExpense = document.getElementById('sumExpense');
+  const sumBalance = document.getElementById('sumBalance');
+
+  const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+
+  function fmt(n){
+    n = Math.round(n||0);
+    return n.toLocaleString('en-US');
+  }
+
+  // ---- Gregorian <-> Jalali (Persian solar) calendar conversion ----
+  // Uses the standard 33-year leap-cycle break table to locate each Jalali
+  // year's Nowruz (New Year) date, then measures day-offsets with native
+  // Date/UTC math (which already handles Gregorian leap years correctly).
+  function div(a, b){ return Math.floor(a / b); }
+  function mod(a, b){ return a - Math.floor(a / b) * b; }
+
+  const JALALI_BREAKS = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178];
+
+  function jalCal(jy){
+    let bl = JALALI_BREAKS.length, gy = jy + 621, leapJ = -14, jp = JALALI_BREAKS[0], jm, jump = 0, n, i;
+    for(i = 1; i < bl; i += 1){
+      jm = JALALI_BREAKS[i];
+      jump = jm - jp;
+      if(jy < jm) break;
+      leapJ += div(jump, 33) * 8 + div(mod(jump, 33), 4);
+      jp = jm;
+    }
+    n = jy - jp;
+    leapJ += div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+    if(mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+    const leapG = div(gy, 4) - div((div(gy, 100) + 1) * 3, 4) - 150;
+    const march = 20 + leapJ - leapG; // day-of-March that Farvardin 1 falls on
+    return { gy, march };
+  }
+
+  function gregorianToJalali(gy, gm, gd){
+    let jy = gy - 621;
+    let r = jalCal(jy);
+    let nowruz = Date.UTC(r.gy, 2, r.march);
+    const target = Date.UTC(gy, gm - 1, gd);
+    let diffDays = Math.round((target - nowruz) / 86400000);
+    if(diffDays < 0){
+      jy -= 1;
+      r = jalCal(jy);
+      nowruz = Date.UTC(r.gy, 2, r.march);
+      diffDays = Math.round((target - nowruz) / 86400000);
+    }
+    let jm, jd;
+    if(diffDays <= 185){
+      jm = 1 + div(diffDays, 31);
+      jd = mod(diffDays, 31) + 1;
+    } else {
+      const k = diffDays - 186;
+      jm = 7 + div(k, 30);
+      jd = mod(k, 30) + 1;
+    }
+    return { jy, jm, jd };
+  }
+
+  function shiftJalaliMonth(jy, jm, offset){
+    const total = (jy * 12 + (jm - 1)) + offset;
+    return { jy: Math.floor(total / 12), jm: mod(total, 12) + 1 };
+  }
+
+  function jMonthKey(jy, jm){
+    return jy + '-' + String(jm).padStart(2, '0');
+  }
+
+  function isLeapJalaliYear(jy){
+    const nowruzThis = Date.UTC(jalCal(jy).gy, 2, jalCal(jy).march);
+    const nowruzNext = Date.UTC(jalCal(jy + 1).gy, 2, jalCal(jy + 1).march);
+    return Math.round((nowruzNext - nowruzThis) / 86400000) === 366;
+  }
+
+  function daysInJalaliMonth(jy, jm){
+    if(jm <= 6) return 31;
+    if(jm <= 11) return 30;
+    return isLeapJalaliYear(jy) ? 30 : 29;
+  }
+
+  // Expense dates are stored directly as Jalali strings: "jy-jm-jd" (zero-padded)
+  function formatJalaliDate(jDateStr){
+    if(!jDateStr) return '';
+    const [jy, jm, jd] = jDateStr.split('-').map(Number);
+    if(!jy || !jm || !jd) return '';
+    return jd + ' ' + JALALI_MONTHS[jm - 1] + ' ' + jy;
+  }
+
+  function getTodayJalali(){
+    const now = new Date();
+    return gregorianToJalali(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  }
+
+  function buildMonthOptions(){
+    monthSelect.innerHTML = '';
+    const todayJ = getTodayJalali();
+    for(let i=5;i>=-6;i--){
+      const { jy, jm } = shiftJalaliMonth(todayJ.jy, todayJ.jm, -i);
+      const opt = document.createElement('option');
+      opt.value = jMonthKey(jy, jm);
+      opt.textContent = JALALI_MONTHS[jm - 1] + ' ' + jy;
+      monthSelect.appendChild(opt);
+    }
+    monthSelect.value = jMonthKey(todayJ.jy, todayJ.jm);
+  }
+
+  function populateDaySelect(jy, jm, preferredDay){
+    const days = daysInJalaliMonth(jy, jm);
+    const current = preferredDay || Number(jDaySelect.value) || 1;
+    jDaySelect.innerHTML = '';
+    for(let d = 1; d <= days; d++){
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      jDaySelect.appendChild(opt);
+    }
+    jDaySelect.value = Math.min(current, days);
+  }
+
+  function buildJalaliDateInputs(){
+    const todayJ = getTodayJalali();
+
+    jMonthSelect.innerHTML = '';
+    JALALI_MONTHS.forEach((name, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx + 1;
+      opt.textContent = name;
+      jMonthSelect.appendChild(opt);
+    });
+    jMonthSelect.value = todayJ.jm;
+
+    jYearSelect.innerHTML = '';
+    for(let y = todayJ.jy - 5; y <= todayJ.jy + 1; y++){
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      jYearSelect.appendChild(opt);
+    }
+    jYearSelect.value = todayJ.jy;
+
+    populateDaySelect(todayJ.jy, todayJ.jm, todayJ.jd);
+
+    const onYearOrMonthChange = () => populateDaySelect(Number(jYearSelect.value), Number(jMonthSelect.value));
+    jYearSelect.addEventListener('change', onYearOrMonthChange);
+    jMonthSelect.addEventListener('change', onYearOrMonthChange);
+  }
+
+  function selectedJalaliDateStr(){
+    const jy = jYearSelect.value;
+    const jm = String(jMonthSelect.value).padStart(2, '0');
+    const jd = String(jDaySelect.value).padStart(2, '0');
+    return jy + '-' + jm + '-' + jd;
+  }
+
+  function buildContributorInputs(){
+    contributorsBox.innerHTML = '';
+    CONTRIBUTORS.forEach(c=>{
+      const row = document.createElement('div');
+      row.className = 'contrib-row';
+      row.innerHTML = `
+        <span class="name">${c.label}</span>
+        <input type="number" inputmode="numeric" data-key="${c.key}" placeholder="0">
+        <span class="unit">تومان</span>
+      `;
+      contributorsBox.appendChild(row);
+    });
+    contributorsBox.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input', onIncomeChange);
+    });
+  }
+
+  function buildCatSelect(){
+    catSelect.innerHTML = '';
+    CATEGORIES.forEach(c=>{
+      const opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.label;
+      catSelect.appendChild(opt);
+    });
+  }
+
+  function getMonthData(key){
+    if(!data.months[key]){
+      const inc = {};
+      CONTRIBUTORS.forEach(c=> inc[c.key]=0);
+      data.months[key] = { income: inc, expenses: [] };
+    }
+    return data.months[key];
+  }
+
+  function loadData(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ data = JSON.parse(raw); }
+    }catch(e){
+      data = { months: {} };
+    }
+  }
+
+  function saveData(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }catch(e){
+      console.error('ذخیره‌سازی ناموفق بود', e);
+    }
+  }
+
+  function onIncomeChange(){
+    const key = monthSelect.value;
+    const m = getMonthData(key);
+    contributorsBox.querySelectorAll('input').forEach(inp=>{
+      m.income[inp.dataset.key] = Number(inp.value)||0;
+    });
+    saveData();
+    render();
+  }
+
+  function renderContributors(){
+    const key = monthSelect.value;
+    const m = getMonthData(key);
+    contributorsBox.querySelectorAll('input').forEach(inp=>{
+      const v = m.income[inp.dataset.key]||0;
+      inp.value = v === 0 ? '' : v;
+    });
+  }
+
+  function renderExpenseList(){
+    const key = monthSelect.value;
+    const m = getMonthData(key);
+    expenseList.innerHTML = '';
+    if(m.expenses.length === 0){
+      expenseList.innerHTML = '<div class="empty-note">هنوز هزینه‌ای برای این ماه ثبت نشده</div>';
+      return;
+    }
+    const sorted = [...m.expenses].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    sorted.forEach(exp=>{
+      const cat = CATEGORIES.find(c=>c.key===exp.category) || CATEGORIES[CATEGORIES.length-1];
+      const row = document.createElement('div');
+      row.className = 'expense-item';
+      row.innerHTML = `
+        <span class="cat-dot" style="background:${cat.color}"></span>
+        <div class="expense-info">
+          <div class="cat">${cat.label}</div>
+          <div class="note">${exp.note ? exp.note : formatJalaliDate(exp.date)}</div>
+        </div>
+        <span class="expense-amt">${fmt(exp.amount)}</span>
+        <button class="del-btn" data-id="${exp.id}">✕</button>
+      `;
+      expenseList.appendChild(row);
+    });
+    expenseList.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id;
+        m.expenses = m.expenses.filter(e=> String(e.id) !== id);
+        saveData();
+        render();
+      });
+    });
+  }
+
+  function renderBreakdownAndSummary(){
+    const key = monthSelect.value;
+    const m = getMonthData(key);
+
+    const totalIncome = CONTRIBUTORS.reduce((s,c)=> s + (m.income[c.key]||0), 0);
+    const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
+    const balance = totalIncome - totalExpense;
+
+    incomeTotalTxt.textContent = fmt(totalIncome) + ' تومان';
+    sumIncome.textContent = fmt(totalIncome);
+    sumExpense.textContent = fmt(totalExpense);
+    sumBalance.textContent = fmt(balance);
+    sumBalance.classList.remove('balance-pos','balance-neg');
+    sumBalance.classList.add(balance >= 0 ? 'balance-pos' : 'balance-neg');
+
+    catBreakdown.innerHTML = '';
+    const byCat = {};
+    CATEGORIES.forEach(c=> byCat[c.key]=0);
+    m.expenses.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + (Number(e.amount)||0); });
+
+    const anyExpense = totalExpense > 0;
+    if(!anyExpense){
+      catBreakdown.innerHTML = '<div class="empty-note">با ثبت هزینه، نمودار سهم هر دسته اینجا نمایش داده می‌شود</div>';
+      return;
+    }
+
+    CATEGORIES.forEach(c=>{
+      const v = byCat[c.key]||0;
+      if(v === 0) return;
+      const pct = totalExpense > 0 ? Math.round((v/totalExpense)*100) : 0;
+      const row = document.createElement('div');
+      row.className = 'cat-row';
+      row.innerHTML = `
+        <div class="cat-top">
+          <span class="lbl"><span class="cat-dot" style="background:${c.color}"></span>${c.label}</span>
+          <span class="val">${fmt(v)} تومان · ${pct}%</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
+      `;
+      catBreakdown.appendChild(row);
+    });
+  }
+
+  function render(){
+    renderContributors();
+    renderExpenseList();
+    renderBreakdownAndSummary();
+  }
+
+  // ---- Bank SMS parsing ----
+  const ACCOUNT_STORAGE_KEY = 'family-budget-account-v1';
+
+  function normalizeDigits(str){
+    const persian = '۰۱۲۳۴۵۶۷۸۹';
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    return str.replace(/[۰-۹٠-٩]/g, (ch) => {
+      let idx = persian.indexOf(ch);
+      if(idx > -1) return String(idx);
+      idx = arabic.indexOf(ch);
+      if(idx > -1) return String(idx);
+      return ch;
+    });
+  }
+
+  function normalizeArabicLetters(str){
+    return str.replace(/ي/g, 'ی').replace(/ك/g, 'ک').replace(/ة/g, 'ه').replace(/ـ/g, '');
+  }
+
+  function normalizeSmsText(str){
+    return normalizeArabicLetters(normalizeDigits(str || ''));
+  }
+
+  function extractNumberFromText(str){
+    const m = str.match(/(\d{1,3}(?:[,.\u066C]\d{3})+|\d{4,})/);
+    return m ? m[0] : null;
+  }
+
+  function parseBankSms(raw){
+    const text = normalizeSmsText(raw);
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    const withdrawKeywords = /برداشت|خرید|کسر|پرداخت|انتقال از حساب|پایانه فروش|کارمزد/;
+    const depositKeywords = /واریز|افزایش موجودی|بازگشت وجه/;
+
+    let type = null, txnLine = null;
+    for(const line of lines){
+      const w = withdrawKeywords.test(line), d = depositKeywords.test(line);
+      if(w && !d && !type){ type = 'expense'; txnLine = line; }
+      else if(d && !w && !type){ type = 'income'; txnLine = line; }
+    }
+    if(withdrawKeywords.test(text) && depositKeywords.test(text) && !txnLine) type = null;
+
+    let amountRaw = txnLine ? extractNumberFromText(txnLine) : null;
+    if(!amountRaw){
+      const mbMatch = text.match(/مبلغ[:\s]*([\d,.\u066C]+)/);
+      if(mbMatch) amountRaw = mbMatch[1];
+    }
+    if(!amountRaw){
+      for(const line of lines){
+        if(/حساب|شماره|کارت|موجودی|مانده/.test(line)) continue;
+        const n = extractNumberFromText(line);
+        if(n){ amountRaw = n; break; }
+      }
+    }
+
+    let amount = null;
+    if(amountRaw){
+      amount = Number(amountRaw.replace(/[,.\u066C]/g, ''));
+      const isToman = /تومان/.test(text);
+      if(!isToman) amount = Math.round(amount / 10); // default & explicit "ریال" both mean divide by 10
+    }
+
+    let jy = null, jm = null, jd = null;
+    const fullDate = text.match(/(1[34]\d{2})[\/-](\d{1,2})[\/-](\d{1,2})/);
+    if(fullDate){
+      jy = Number(fullDate[1]); jm = Number(fullDate[2]); jd = Number(fullDate[3]);
+    } else {
+      const shortDate = text.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})(?:[-\s]|$)/m);
+      if(shortDate){ jm = Number(shortDate[1]); jd = Number(shortDate[2]); }
+    }
+
+    let account = null;
+    const accMatch = text.match(/حساب[^\d]{0,3}(\d{6,})/);
+    if(accMatch) account = accMatch[1];
+
+    return { type, amount, jy, jm, jd, account };
+  }
+
+  function applyParsedDateToForm(jy, jm, jd){
+    if(!jy || !jm || !jd) return;
+    const exists = [...jYearSelect.children].some(o => Number(o.value) === jy);
+    if(exists) jYearSelect.value = jy;
+    jMonthSelect.value = jm;
+    populateDaySelect(jy, jm, jd);
+    const key = jMonthKey(jy, jm);
+    const monthExists = [...monthSelect.children].some(o => o.value === key);
+    if(monthExists) monthSelect.value = key;
+  }
+
+  function renderSmsResult(html){
+    smsResult.innerHTML = html;
+  }
+
+  function accountStatusHtml(account){
+    if(!account) return '';
+    if(!savedAccount){
+      return '<div class="sms-line">شماره حساب شناسایی‌شده: ...' + account.slice(-4) +
+        ' &nbsp; <button type="button" class="sms-choice-btn secondary" id="smsSaveAccount" data-acc="' + account + '">تنظیم به‌عنوان حساب خانواده</button></div>';
+    }
+    if(account !== savedAccount){
+      return '<div class="sms-line sms-warn">⚠️ این پیامک از حسابی غیر از حساب خانواده ذخیره‌شده است.</div>';
+    }
+    return '';
+  }
+
+  function bindAccountStatusButton(){
+    const btn = document.getElementById('smsSaveAccount');
+    if(btn){
+      btn.addEventListener('click', () => {
+        saveAccountNumber(btn.dataset.acc);
+        renderSmsResult('<div class="sms-line sms-ok">این حساب به‌عنوان حساب خانواده ذخیره شد. از این پس پیامک‌های حساب‌های دیگر با هشدار مشخص می‌شوند.</div>');
+      });
+    }
+  }
+
+  function handleExpenseSms(res){
+    amountInput.value = res.amount;
+    applyParsedDateToForm(res.jy, res.jm, res.jd);
+    render();
+    renderSmsResult(
+      accountStatusHtml(res.account) +
+      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' تومان شناسایی شد.</div>' +
+      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
+    );
+    bindAccountStatusButton();
+    amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function handleIncomeSms(res){
+    applyParsedDateToForm(res.jy, res.jm, res.jd);
+    const buttons = CONTRIBUTORS.map(c =>
+      '<button type="button" class="sms-choice-btn" data-key="' + c.key + '">' + c.label + '</button>'
+    ).join('');
+    renderSmsResult(
+      accountStatusHtml(res.account) +
+      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' تومان شناسایی شد.</div>' +
+      '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
+      '<div class="sms-choice-row">' + buttons + '</div>'
+    );
+    bindAccountStatusButton();
+    smsResult.querySelectorAll('.sms-choice-btn[data-key]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = monthSelect.value;
+        const m = getMonthData(key);
+        m.income[btn.dataset.key] = (m.income[btn.dataset.key] || 0) + res.amount;
+        saveData();
+        render();
+        const person = CONTRIBUTORS.find(c => c.key === btn.dataset.key);
+        renderSmsResult('<div class="sms-line sms-ok">' + fmt(res.amount) + ' تومان به واریزی ' + person.label + ' اضافه شد.</div>');
+        smsInput.value = '';
+      });
+    });
+  }
+
+  function handleAmbiguousSms(res){
+    renderSmsResult(
+      accountStatusHtml(res.account) +
+      '<div class="sms-line">مبلغ ' + fmt(res.amount) + ' تومان شناسایی شد، اما مشخص نشد برداشت است یا واریز:</div>' +
+      '<div class="sms-choice-row">' +
+        '<button type="button" class="sms-choice-btn" id="smsMarkExpense">این هزینه (برداشت) است</button>' +
+        '<button type="button" class="sms-choice-btn secondary" id="smsMarkIncome">این واریزی است</button>' +
+      '</div>'
+    );
+    bindAccountStatusButton();
+    document.getElementById('smsMarkExpense').addEventListener('click', () => handleExpenseSms(res));
+    document.getElementById('smsMarkIncome').addEventListener('click', () => handleIncomeSms(res));
+  }
+
+  parseSmsBtn.addEventListener('click', () => {
+    const res = parseBankSms(smsInput.value);
+    if(!res.amount){
+      renderSmsResult(accountStatusHtml(res.account) + '<div class="sms-line sms-warn">مبلغی در متن پیدا نشد. لطفاً متن پیامک را کامل بچسبانید یا مبلغ را دستی وارد کنید.</div>');
+      return;
+    }
+    if(res.jm && res.jd && !res.jy) res.jy = getTodayJalali().jy;
+    if(res.type === 'expense') handleExpenseSms(res);
+    else if(res.type === 'income') handleIncomeSms(res);
+    else handleAmbiguousSms(res);
+  });
+
+  addBtn.addEventListener('click', ()=>{
+    const amount = Number(amountInput.value);
+    if(!amount || amount <= 0){
+      amountInput.focus();
+      return;
+    }
+    const key = monthSelect.value;
+    const m = getMonthData(key);
+    m.expenses.push({
+      id: Date.now(),
+      category: catSelect.value,
+      amount: amount,
+      note: noteInput.value.trim(),
+      date: selectedJalaliDateStr()
+    });
+    amountInput.value = '';
+    noteInput.value = '';
+    saveData();
+    render();
+  });
+
+  monthSelect.addEventListener('change', render);
+
+  (function init(){
+    buildMonthOptions();
+    buildContributorInputs();
+    buildCatSelect();
+    buildJalaliDateInputs();
+    loadData();
+    loadSavedAccount();
+    render();
+  })();
+
+  // ---- PWA install prompt ----
+  let deferredPrompt = null;
+  const installBar = document.getElementById('installBar');
+  const installBtn = document.getElementById('installBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBar.style.display = 'flex';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installBar.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBar.style.display = 'none';
+  });
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
