@@ -1,4 +1,6 @@
-const CACHE_NAME = 'daftar-kharj-v1';
+// Bump this version string on every future update so the browser detects the
+// changed file, installs a fresh service worker, and evicts the old cache.
+const CACHE_NAME = 'daftar-kharj-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -24,18 +26,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Network-first: always try to fetch the latest version first (so updates
+// show up immediately), and only fall back to the cached copy when offline.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
