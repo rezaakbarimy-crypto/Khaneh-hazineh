@@ -414,8 +414,9 @@
   <div class="card">
     <h2>ثبت هزینه جدید</h2>
     <div class="form-grid">
-      <select id="catSelect"></select>
-      <input id="amountInput" type="number" inputmode="numeric" placeholder="مبلغ (تومان)">
+      <select id="mainCatSelect"></select>
+      <select id="subCatSelect"></select>
+      <input id="amountInput" type="text" inputmode="numeric" placeholder="مبلغ (تومان)">
       <div class="jalali-date-row">
         <select id="jDaySelect"></select>
         <select id="jMonthSelect"></select>
@@ -460,15 +461,126 @@
 <script>
 (function(){
   const CATEGORIES = [
-    { key: 'khorak', label: 'خوراک', color: '#B8863B' },
-    { key: 'tafrih', label: 'تفریح', color: '#5C7A6B' },
-    { key: 'mosaferat', label: 'مسافرت', color: '#3E6B8A' },
-    { key: 'ab', label: 'قبض آب', color: '#4A8FA8' },
-    { key: 'bargh', label: 'قبض برق', color: '#C9A227' },
-    { key: 'telefon', label: 'قبض تلفن', color: '#7A5C8A' },
-    { key: 'maliat', label: 'مالیات شهرداری', color: '#A6462E' },
-    { key: 'sayer', label: 'سایر', color: '#8A7F6A' },
+    { key: 'maskan', label: 'مسکن', color: '#B8863B', subs: [
+      { key: 'ejare', label: 'اجاره منزل' },
+      { key: 'sharj', label: 'شارژ ساختمان' },
+      { key: 'bimeh_sakhteman', label: 'بیمه ساختمان' },
+      { key: 'tamirat_sakhteman', label: 'تعمیرات ساختمان' },
+      { key: 'ab', label: 'قبض آب' },
+      { key: 'bargh', label: 'قبض برق' },
+      { key: 'gaz', label: 'قبض گاز' },
+      { key: 'telefon', label: 'قبض تلفن' },
+      { key: 'mobile', label: 'قبض/شارژ موبایل' },
+      { key: 'lavazem_manzel', label: 'لوازم منزل' },
+      { key: 'avarez_shahrdari', label: 'عوارض شهرداری' },
+      { key: 'maliat', label: 'مالیات' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'aghzie', label: 'اغذیه', color: '#5C7A6B', subs: [
+      { key: 'goosht_ghermez', label: 'گوشت قرمز' },
+      { key: 'morgh', label: 'مرغ' },
+      { key: 'mahi', label: 'ماهی و میگو' },
+      { key: 'berenj', label: 'برنج' },
+      { key: 'naan', label: 'نان' },
+      { key: 'labaniat', label: 'لبنیات' },
+      { key: 'hobubat', label: 'حبوبات' },
+      { key: 'ghallat', label: 'غلات' },
+      { key: 'mive_tarebar', label: 'میوه و تره‌بار' },
+      { key: 'nooshidani', label: 'نوشیدنی' },
+      { key: 'tanaghol', label: 'تنقلات' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'ellbase', label: 'البسه و پوشاک', color: '#3E6B8A', subs: [
+      { key: 'khayyati', label: 'خیاطی' },
+      { key: 'kharid_poushak', label: 'خرید پوشاک' },
+      { key: 'khoshkshooyi', label: 'خشک‌شویی' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'khodro', label: 'خودرو', color: '#4A8FA8', subs: [
+      { key: 'benzin', label: 'بنزین' },
+      { key: 'taviz_roghan', label: 'تعویض روغن' },
+      { key: 'jaraem', label: 'جرایم رانندگی' },
+      { key: 'tarh_traffic', label: 'طرح ترافیک' },
+      { key: 'parking', label: 'پارکینگ' },
+      { key: 'bimeh_sales', label: 'بیمه ثالث' },
+      { key: 'bimeh_badaneh', label: 'بیمه بدنه' },
+      { key: 'tamirat_asasi', label: 'تعمیرات اساسی' },
+      { key: 'avarez_khodro', label: 'عوارض خودرو' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'iyab', label: 'ایاب و ذهاب', color: '#C9A227', subs: [
+      { key: 'ajans', label: 'کرایه آژانس' },
+      { key: 'taxi', label: 'کرایه تاکسی' },
+      { key: 'otobus', label: 'کرایه اتوبوس' },
+      { key: 'metro', label: 'کرایه مترو' },
+      { key: 'servis', label: 'سرویس' },
+      { key: 'belit_ghatar', label: 'بلیط قطار' },
+      { key: 'belit_havapeyma', label: 'بلیط هواپیما' },
+      { key: 'belit_otobus', label: 'بلیط اتوبوس' },
+      { key: 'hotel', label: 'کرایه هتل و اقامت' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'amoozesh', label: 'آموزش و تحصیل', color: '#7A5C8A', subs: [
+      { key: 'varzeshi', label: 'کلاس‌های ورزشی' },
+      { key: 'shahrieh_madrese', label: 'شهریه مدرسه' },
+      { key: 'shahrieh_daneshgah', label: 'شهریه دانشگاه' },
+      { key: 'shahrieh_mahdkodak', label: 'شهریه مهدکودک' },
+      { key: 'lavazem_tahrir', label: 'لوازم‌التحریر' },
+      { key: 'kelas_amoozeshi', label: 'کلاس‌های آموزشی' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'farhangi', label: 'فرهنگی و سرگرمی', color: '#8A6D3B', subs: [
+      { key: 'narmafzar', label: 'نرم‌افزار' },
+      { key: 'ketab', label: 'کتاب' },
+      { key: 'majaleh', label: 'روزنامه و مجله' },
+      { key: 'film', label: 'فیلم' },
+      { key: 'cinema', label: 'سینما' },
+      { key: 'music', label: 'موسیقی' },
+      { key: 'theater', label: 'تئاتر' },
+      { key: 'concert', label: 'کنسرت' },
+      { key: 'internet', label: 'اینترنت' },
+      { key: 'game', label: 'بازی و سرگرمی' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
+    { key: 'behdashti', label: 'بهداشتی و درمانی', color: '#A6462E', subs: [
+      { key: 'vizit', label: 'ویزیت پزشک' },
+      { key: 'lavazem_behdashti', label: 'لوازم بهداشتی' },
+      { key: 'lavazem_arayeshi', label: 'لوازم آرایشی' },
+      { key: 'lavazem_pezeshki', label: 'لوازم پزشکی' },
+      { key: 'dandanpezeshki', label: 'دندانپزشکی' },
+      { key: 'jarrahi', label: 'جراحی' },
+      { key: 'bastari', label: 'بستری' },
+      { key: 'azmayeshgah', label: 'آزمایشگاه' },
+      { key: 'tasvirbardari', label: 'تصویربرداری' },
+      { key: 'daru', label: 'دارو' },
+      { key: 'sayer', label: 'سایر' },
+    ]},
   ];
+
+  // Old flat categories (from before this update) mapped onto the new taxonomy,
+  // so previously saved expenses keep displaying and totaling correctly.
+  const LEGACY_CATEGORY_MAP = {
+    khorak: ['aghzie', 'sayer'],
+    tafrih: ['farhangi', 'sayer'],
+    mosaferat: ['iyab', 'sayer'],
+    ab: ['maskan', 'ab'],
+    bargh: ['maskan', 'bargh'],
+    telefon: ['maskan', 'telefon'],
+    maliat: ['maskan', 'avarez_shahrdari'],
+    sayer: ['maskan', 'sayer'],
+  };
+
+  function resolveExpenseCategory(exp){
+    let mainKey = exp.mainCat, subKey = exp.subCat;
+    if(!mainKey && exp.category){
+      const mapped = LEGACY_CATEGORY_MAP[exp.category];
+      if(mapped){ mainKey = mapped[0]; subKey = mapped[1]; }
+    }
+    const group = CATEGORIES.find(g => g.key === mainKey) || CATEGORIES[0];
+    const sub = group.subs.find(s => s.key === subKey) || group.subs[group.subs.length - 1];
+    return { group, sub };
+  }
+
   const CONTRIBUTORS = [
     { key: 'maryam', label: 'مریم' },
     { key: 'sara', label: 'سارا' },
@@ -494,7 +606,8 @@
 
   const monthSelect = document.getElementById('monthSelect');
   const contributorsBox = document.getElementById('contributorsBox');
-  const catSelect = document.getElementById('catSelect');
+  const mainCatSelect = document.getElementById('mainCatSelect');
+  const subCatSelect = document.getElementById('subCatSelect');
   const amountInput = document.getElementById('amountInput');
   const jDaySelect = document.getElementById('jDaySelect');
   const jMonthSelect = document.getElementById('jMonthSelect');
@@ -516,6 +629,18 @@
   function fmt(n){
     n = Math.round(n||0);
     return n.toLocaleString('en-US');
+  }
+
+  // ---- Live thousands-separator formatting for number-entry text inputs ----
+  function getRawNumber(input){
+    return Number((input.value || '').replace(/[^\d]/g, '')) || 0;
+  }
+
+  function attachThousandsFormatting(input){
+    input.addEventListener('input', () => {
+      const raw = input.value.replace(/[^\d]/g, '');
+      input.value = raw === '' ? '' : Number(raw).toLocaleString('en-US');
+    });
   }
 
   // ---- Gregorian <-> Jalali (Persian solar) calendar conversion ----
@@ -670,24 +795,38 @@
       row.className = 'contrib-row';
       row.innerHTML = `
         <span class="name">${c.label}</span>
-        <input type="number" inputmode="numeric" data-key="${c.key}" placeholder="0">
+        <input type="text" inputmode="numeric" data-key="${c.key}" placeholder="0">
         <span class="unit">تومان</span>
       `;
       contributorsBox.appendChild(row);
     });
     contributorsBox.querySelectorAll('input').forEach(inp=>{
+      attachThousandsFormatting(inp);
       inp.addEventListener('input', onIncomeChange);
     });
   }
 
-  function buildCatSelect(){
-    catSelect.innerHTML = '';
-    CATEGORIES.forEach(c=>{
+  function populateSubCatSelect(mainKey){
+    const group = CATEGORIES.find(g => g.key === mainKey) || CATEGORIES[0];
+    subCatSelect.innerHTML = '';
+    group.subs.forEach(s => {
       const opt = document.createElement('option');
-      opt.value = c.key;
-      opt.textContent = c.label;
-      catSelect.appendChild(opt);
+      opt.value = s.key;
+      opt.textContent = s.label;
+      subCatSelect.appendChild(opt);
     });
+  }
+
+  function buildCatSelect(){
+    mainCatSelect.innerHTML = '';
+    CATEGORIES.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.key;
+      opt.textContent = g.label;
+      mainCatSelect.appendChild(opt);
+    });
+    populateSubCatSelect(CATEGORIES[0].key);
+    mainCatSelect.addEventListener('change', () => populateSubCatSelect(mainCatSelect.value));
   }
 
   function getMonthData(key){
@@ -720,7 +859,7 @@
     const key = monthSelect.value;
     const m = getMonthData(key);
     contributorsBox.querySelectorAll('input').forEach(inp=>{
-      m.income[inp.dataset.key] = Number(inp.value)||0;
+      m.income[inp.dataset.key] = getRawNumber(inp);
     });
     saveData();
     render();
@@ -731,7 +870,7 @@
     const m = getMonthData(key);
     contributorsBox.querySelectorAll('input').forEach(inp=>{
       const v = m.income[inp.dataset.key]||0;
-      inp.value = v === 0 ? '' : v;
+      inp.value = v === 0 ? '' : v.toLocaleString('en-US');
     });
   }
 
@@ -745,13 +884,13 @@
     }
     const sorted = [...m.expenses].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
     sorted.forEach(exp=>{
-      const cat = CATEGORIES.find(c=>c.key===exp.category) || CATEGORIES[CATEGORIES.length-1];
+      const { group, sub } = resolveExpenseCategory(exp);
       const row = document.createElement('div');
       row.className = 'expense-item';
       row.innerHTML = `
-        <span class="cat-dot" style="background:${cat.color}"></span>
+        <span class="cat-dot" style="background:${group.color}"></span>
         <div class="expense-info">
-          <div class="cat">${cat.label}</div>
+          <div class="cat">${group.label} &rsaquo; ${sub.label}</div>
           <div class="note">${exp.note ? exp.note : formatJalaliDate(exp.date)}</div>
         </div>
         <span class="expense-amt">${fmt(exp.amount)}</span>
@@ -787,7 +926,10 @@
     catBreakdown.innerHTML = '';
     const byCat = {};
     CATEGORIES.forEach(c=> byCat[c.key]=0);
-    m.expenses.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + (Number(e.amount)||0); });
+    m.expenses.forEach(e=>{
+      const { group } = resolveExpenseCategory(e);
+      byCat[group.key] = (byCat[group.key]||0) + (Number(e.amount)||0);
+    });
 
     const anyExpense = totalExpense > 0;
     if(!anyExpense){
@@ -935,7 +1077,7 @@
   }
 
   function handleExpenseSms(res){
-    amountInput.value = res.amount;
+    amountInput.value = res.amount.toLocaleString('en-US');
     applyParsedDateToForm(res.jy, res.jm, res.jd);
     render();
     renderSmsResult(
@@ -1000,7 +1142,7 @@
   });
 
   addBtn.addEventListener('click', ()=>{
-    const amount = Number(amountInput.value);
+    const amount = getRawNumber(amountInput);
     if(!amount || amount <= 0){
       amountInput.focus();
       return;
@@ -1009,7 +1151,8 @@
     const m = getMonthData(key);
     m.expenses.push({
       id: Date.now(),
-      category: catSelect.value,
+      mainCat: mainCatSelect.value,
+      subCat: subCatSelect.value,
       amount: amount,
       note: noteInput.value.trim(),
       date: selectedJalaliDateStr()
@@ -1023,6 +1166,7 @@
   monthSelect.addEventListener('change', render);
 
   (function init(){
+    attachThousandsFormatting(amountInput);
     buildMonthOptions();
     buildContributorInputs();
     buildCatSelect();
