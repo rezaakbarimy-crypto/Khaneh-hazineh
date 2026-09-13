@@ -424,7 +424,7 @@
     <div class="contributors" id="contributorsBox"></div>
     <div class="income-total">
       <span>جمع واریزی</span>
-      <b id="incomeTotalTxt">۰ تومان</b>
+      <b id="incomeTotalTxt">۰ ریال</b>
     </div>
   </div>
 
@@ -442,7 +442,7 @@
     <div class="form-grid">
       <select id="mainCatSelect"></select>
       <select id="subCatSelect"></select>
-      <input id="amountInput" type="text" inputmode="numeric" placeholder="مبلغ (تومان)">
+      <input id="amountInput" type="text" inputmode="numeric" placeholder="مبلغ (ریال)">
       <div class="jalali-date-row">
         <select id="jDaySelect"></select>
         <select id="jMonthSelect"></select>
@@ -857,7 +857,7 @@
       row.innerHTML = `
         <span class="name">${c.label}</span>
         <input type="text" inputmode="numeric" data-key="${c.key}" placeholder="0">
-        <span class="unit">تومان</span>
+        <span class="unit">ریال</span>
       `;
       contributorsBox.appendChild(row);
     });
@@ -1012,7 +1012,7 @@
     const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
     const balance = totalIncome - totalExpense;
 
-    incomeTotalTxt.textContent = fmt(totalIncome) + ' تومان';
+    incomeTotalTxt.textContent = fmt(totalIncome) + ' ریال';
     sumIncome.textContent = fmt(totalIncome);
     sumExpense.textContent = fmt(totalExpense);
     sumBalance.textContent = fmt(balance);
@@ -1042,7 +1042,7 @@
       row.innerHTML = `
         <div class="cat-top">
           <span class="lbl"><span class="cat-dot" style="background:${c.color}"></span>${c.label}</span>
-          <span class="val">${fmt(v)} تومان · ${pct}%</span>
+          <span class="val">${fmt(v)} ریال · ${pct}%</span>
         </div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
       `;
@@ -1115,8 +1115,8 @@
     let amount = null;
     if(amountRaw){
       amount = Number(amountRaw.replace(/[,.\u066C]/g, ''));
-      const isToman = /تومان/.test(text);
-      if(!isToman) amount = Math.round(amount / 10); // default & explicit "ریال" both mean divide by 10
+      const isToman = /تومان/.test(text); // checks the bank SMS wording itself, not our app's display unit
+      if(isToman) amount = amount * 10; // app basis is Rial, so convert an explicit Toman amount up
     }
 
     let jy = null, jm = null, jd = null;
@@ -1179,7 +1179,7 @@
     render();
     renderSmsResult(
       accountStatusHtml(res.account) +
-      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' تومان شناسایی شد.</div>' +
+      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
       '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
     );
     bindAccountStatusButton();
@@ -1193,7 +1193,7 @@
     ).join('');
     renderSmsResult(
       accountStatusHtml(res.account) +
-      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' تومان شناسایی شد.</div>' +
+      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
       '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
       '<div class="sms-choice-row">' + buttons + '</div>'
     );
@@ -1206,7 +1206,7 @@
         saveData();
         render();
         const person = currentContributors().find(c => c.key === btn.dataset.key);
-        renderSmsResult('<div class="sms-line sms-ok">' + fmt(res.amount) + ' تومان به واریزی ' + person.label + ' اضافه شد.</div>');
+        renderSmsResult('<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد.</div>');
         smsInput.value = '';
       });
     });
@@ -1215,7 +1215,7 @@
   function handleAmbiguousSms(res){
     renderSmsResult(
       accountStatusHtml(res.account) +
-      '<div class="sms-line">مبلغ ' + fmt(res.amount) + ' تومان شناسایی شد، اما مشخص نشد برداشت است یا واریز:</div>' +
+      '<div class="sms-line">مبلغ ' + fmt(res.amount) + ' ریال شناسایی شد، اما مشخص نشد برداشت است یا واریز:</div>' +
       '<div class="sms-choice-row">' +
         '<button type="button" class="sms-choice-btn" id="smsMarkExpense">این هزینه (برداشت) است</button>' +
         '<button type="button" class="sms-choice-btn secondary" id="smsMarkIncome">این واریزی است</button>' +
