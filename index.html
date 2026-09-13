@@ -98,6 +98,30 @@
   }
   .month-row select option{ color:#111; }
 
+  .book-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .book-tab{
+    flex:1;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 6px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight:700;
+    color: var(--ink-soft);
+    cursor:pointer;
+    text-align:center;
+  }
+  .book-tab.active{
+    background: var(--navy);
+    color: var(--paper);
+    border-color: var(--navy);
+  }
+
   /* ---------- Section cards ---------- */
   .card{
     background: var(--paper-2);
@@ -387,11 +411,13 @@
 
   <div class="ledger-head">
     <h1>دفتر خرج خانه</h1>
-    <p>حساب‌وکتاب ماهانه خانواده</p>
+    <p id="bookSubtitle">حساب‌وکتاب ماهانه خانواده</p>
     <div class="month-row">
       <select id="monthSelect"></select>
     </div>
   </div>
+
+  <div class="book-tabs" id="bookTabs"></div>
 
   <div class="card">
     <h2>واریزی‌های این ماه</h2>
@@ -581,29 +607,64 @@
     return { group, sub };
   }
 
-  const CONTRIBUTORS = [
-    { key: 'maryam', label: 'مریم' },
-    { key: 'sara', label: 'سارا' },
-    { key: 'parsa', label: 'پارسا' },
-    { key: 'reza', label: 'رضا' },
-    { key: 'azertim', label: 'AZERTIM' },
+  const BOOKS = [
+    { key: 'book1', label: 'مریم، سارا و پارسا', contributors: [
+      { key: 'maryam', label: 'مریم' },
+      { key: 'sara', label: 'سارا' },
+      { key: 'parsa', label: 'پارسا' },
+    ]},
+    { key: 'book2', label: 'رضا و AZERTIM', contributors: [
+      { key: 'reza', label: 'رضا' },
+      { key: 'azertim', label: 'AZERTIM' },
+    ]},
   ];
+  let currentBook = 'book1';
+
+  function currentBookDef(){
+    return BOOKS.find(b => b.key === currentBook) || BOOKS[0];
+  }
+  function currentContributors(){
+    return currentBookDef().contributors;
+  }
 
   const STORAGE_KEY = 'family-budget-v1';
-  let data = { months: {} };
-  let savedAccount = null;
+  const CURRENT_BOOK_KEY = 'family-budget-current-book-v1';
+  let data = { books: { book1: { months: {} }, book2: { months: {} } } };
+  let bookAccounts = { book1: null, book2: null };
 
-  function loadSavedAccount(){
-    try{ savedAccount = localStorage.getItem(ACCOUNT_STORAGE_KEY) || null; }
-    catch(e){ savedAccount = null; }
+  function loadSavedAccounts(){
+    try{
+      const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+      bookAccounts = raw ? JSON.parse(raw) : { book1: null, book2: null };
+    }catch(e){
+      bookAccounts = { book1: null, book2: null };
+    }
   }
 
   function saveAccountNumber(acc){
-    savedAccount = acc;
-    try{ localStorage.setItem(ACCOUNT_STORAGE_KEY, acc); }
+    bookAccounts[currentBook] = acc;
+    try{ localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(bookAccounts)); }
     catch(e){}
   }
 
+  function currentSavedAccount(){
+    return bookAccounts[currentBook] || null;
+  }
+
+  function loadCurrentBook(){
+    try{
+      const saved = localStorage.getItem(CURRENT_BOOK_KEY);
+      if(saved && BOOKS.some(b => b.key === saved)) currentBook = saved;
+    }catch(e){}
+  }
+
+  function persistCurrentBook(){
+    try{ localStorage.setItem(CURRENT_BOOK_KEY, currentBook); }
+    catch(e){}
+  }
+
+  const bookTabs = document.getElementById('bookTabs');
+  const bookSubtitle = document.getElementById('bookSubtitle');
   const monthSelect = document.getElementById('monthSelect');
   const contributorsBox = document.getElementById('contributorsBox');
   const mainCatSelect = document.getElementById('mainCatSelect');
@@ -790,7 +851,7 @@
 
   function buildContributorInputs(){
     contributorsBox.innerHTML = '';
-    CONTRIBUTORS.forEach(c=>{
+    currentContributors().forEach(c=>{
       const row = document.createElement('div');
       row.className = 'contrib-row';
       row.innerHTML = `
@@ -804,6 +865,29 @@
       attachThousandsFormatting(inp);
       inp.addEventListener('input', onIncomeChange);
     });
+    renderContributors();
+  }
+
+  function buildBookTabs(){
+    bookTabs.innerHTML = '';
+    BOOKS.forEach(b => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'book-tab' + (b.key === currentBook ? ' active' : '');
+      btn.textContent = b.label;
+      btn.addEventListener('click', () => {
+        if(currentBook === b.key) return;
+        currentBook = b.key;
+        persistCurrentBook();
+        buildBookTabs();
+        buildContributorInputs();
+        smsInput.value = '';
+        renderSmsResult('');
+        render();
+      });
+      bookTabs.appendChild(btn);
+    });
+    bookSubtitle.textContent = 'دفتر: ' + currentBookDef().label;
   }
 
   function populateSubCatSelect(mainKey){
@@ -829,13 +913,24 @@
     mainCatSelect.addEventListener('change', () => populateSubCatSelect(mainCatSelect.value));
   }
 
-  function getMonthData(key){
-    if(!data.months[key]){
+  function getMonthData(bookKey, key){
+    const book = data.books[bookKey];
+    if(!book.months[key]){
       const inc = {};
-      CONTRIBUTORS.forEach(c=> inc[c.key]=0);
-      data.months[key] = { income: inc, expenses: [] };
+      BOOKS.find(b => b.key === bookKey).contributors.forEach(c => inc[c.key] = 0);
+      book.months[key] = { income: inc, expenses: [] };
     }
-    return data.months[key];
+    return book.months[key];
+  }
+
+  function migrateDataShape(){
+    if(data && data.books) return;
+    if(data && data.months){
+      // Old single-book format: everything the user already entered becomes Book 1.
+      data = { books: { book1: { months: data.months }, book2: { months: {} } } };
+    } else {
+      data = { books: { book1: { months: {} }, book2: { months: {} } } };
+    }
   }
 
   function loadData(){
@@ -843,8 +938,9 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){ data = JSON.parse(raw); }
     }catch(e){
-      data = { months: {} };
+      data = { books: { book1: { months: {} }, book2: { months: {} } } };
     }
+    migrateDataShape();
   }
 
   function saveData(){
@@ -857,7 +953,7 @@
 
   function onIncomeChange(){
     const key = monthSelect.value;
-    const m = getMonthData(key);
+    const m = getMonthData(currentBook, key);
     contributorsBox.querySelectorAll('input').forEach(inp=>{
       m.income[inp.dataset.key] = getRawNumber(inp);
     });
@@ -867,7 +963,7 @@
 
   function renderContributors(){
     const key = monthSelect.value;
-    const m = getMonthData(key);
+    const m = getMonthData(currentBook, key);
     contributorsBox.querySelectorAll('input').forEach(inp=>{
       const v = m.income[inp.dataset.key]||0;
       inp.value = v === 0 ? '' : v.toLocaleString('en-US');
@@ -876,7 +972,7 @@
 
   function renderExpenseList(){
     const key = monthSelect.value;
-    const m = getMonthData(key);
+    const m = getMonthData(currentBook, key);
     expenseList.innerHTML = '';
     if(m.expenses.length === 0){
       expenseList.innerHTML = '<div class="empty-note">هنوز هزینه‌ای برای این ماه ثبت نشده</div>';
@@ -910,9 +1006,9 @@
 
   function renderBreakdownAndSummary(){
     const key = monthSelect.value;
-    const m = getMonthData(key);
+    const m = getMonthData(currentBook, key);
 
-    const totalIncome = CONTRIBUTORS.reduce((s,c)=> s + (m.income[c.key]||0), 0);
+    const totalIncome = currentContributors().reduce((s,c)=> s + (m.income[c.key]||0), 0);
     const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
     const balance = totalIncome - totalExpense;
 
@@ -1056,12 +1152,13 @@
 
   function accountStatusHtml(account){
     if(!account) return '';
-    if(!savedAccount){
+    const saved = currentSavedAccount();
+    if(!saved){
       return '<div class="sms-line">شماره حساب شناسایی‌شده: ...' + account.slice(-4) +
-        ' &nbsp; <button type="button" class="sms-choice-btn secondary" id="smsSaveAccount" data-acc="' + account + '">تنظیم به‌عنوان حساب خانواده</button></div>';
+        ' &nbsp; <button type="button" class="sms-choice-btn secondary" id="smsSaveAccount" data-acc="' + account + '">تنظیم به‌عنوان حساب ' + currentBookDef().label + '</button></div>';
     }
-    if(account !== savedAccount){
-      return '<div class="sms-line sms-warn">⚠️ این پیامک از حسابی غیر از حساب خانواده ذخیره‌شده است.</div>';
+    if(account !== saved){
+      return '<div class="sms-line sms-warn">⚠️ این پیامک از حسابی غیر از حساب ثبت‌شده برای «' + currentBookDef().label + '» است.</div>';
     }
     return '';
   }
@@ -1071,7 +1168,7 @@
     if(btn){
       btn.addEventListener('click', () => {
         saveAccountNumber(btn.dataset.acc);
-        renderSmsResult('<div class="sms-line sms-ok">این حساب به‌عنوان حساب خانواده ذخیره شد. از این پس پیامک‌های حساب‌های دیگر با هشدار مشخص می‌شوند.</div>');
+        renderSmsResult('<div class="sms-line sms-ok">این حساب برای «' + currentBookDef().label + '» ذخیره شد. از این پس پیامک‌های حساب‌های دیگر با هشدار مشخص می‌شوند.</div>');
       });
     }
   }
@@ -1091,7 +1188,7 @@
 
   function handleIncomeSms(res){
     applyParsedDateToForm(res.jy, res.jm, res.jd);
-    const buttons = CONTRIBUTORS.map(c =>
+    const buttons = currentContributors().map(c =>
       '<button type="button" class="sms-choice-btn" data-key="' + c.key + '">' + c.label + '</button>'
     ).join('');
     renderSmsResult(
@@ -1104,11 +1201,11 @@
     smsResult.querySelectorAll('.sms-choice-btn[data-key]').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = monthSelect.value;
-        const m = getMonthData(key);
+        const m = getMonthData(currentBook, key);
         m.income[btn.dataset.key] = (m.income[btn.dataset.key] || 0) + res.amount;
         saveData();
         render();
-        const person = CONTRIBUTORS.find(c => c.key === btn.dataset.key);
+        const person = currentContributors().find(c => c.key === btn.dataset.key);
         renderSmsResult('<div class="sms-line sms-ok">' + fmt(res.amount) + ' تومان به واریزی ' + person.label + ' اضافه شد.</div>');
         smsInput.value = '';
       });
@@ -1148,7 +1245,7 @@
       return;
     }
     const key = monthSelect.value;
-    const m = getMonthData(key);
+    const m = getMonthData(currentBook, key);
     m.expenses.push({
       id: Date.now(),
       mainCat: mainCatSelect.value,
@@ -1167,12 +1264,14 @@
 
   (function init(){
     attachThousandsFormatting(amountInput);
+    loadCurrentBook();
+    buildBookTabs();
     buildMonthOptions();
     buildContributorInputs();
     buildCatSelect();
     buildJalaliDateInputs();
     loadData();
-    loadSavedAccount();
+    loadSavedAccounts();
     render();
   })();
 
