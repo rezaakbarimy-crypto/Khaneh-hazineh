@@ -231,6 +231,20 @@
     cursor: pointer;
   }
   .add-btn:active{ background: var(--navy-2); }
+  .clear-btn{
+    margin-top: 2px;
+    background: transparent;
+    color: var(--brick);
+    border: 1px solid var(--brick);
+    border-radius: 8px;
+    padding: 11px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 90px;
+  }
+  .clear-btn:active{ background: rgba(166,70,46,0.1); }
   .form-grid textarea{
     width:100%;
     font-family: inherit;
@@ -432,7 +446,10 @@
     <h2>دریافت خودکار از پیامک بانک</h2>
     <div class="form-grid">
       <textarea id="smsInput" rows="3" placeholder="متن پیامک بانک را اینجا کپی و پیست کنید"></textarea>
-      <button class="add-btn" id="parseSmsBtn" type="button">استخراج از پیامک</button>
+      <div class="two-col">
+        <button class="add-btn" id="parseSmsBtn" type="button">استخراج از پیامک</button>
+        <button class="clear-btn" id="clearSmsBtn" type="button">پاک کردن</button>
+      </div>
       <div id="smsResult"></div>
     </div>
   </div>
@@ -678,6 +695,7 @@
   const smsInput = document.getElementById('smsInput');
   const parseSmsBtn = document.getElementById('parseSmsBtn');
   const smsResult = document.getElementById('smsResult');
+  const clearSmsBtn = document.getElementById('clearSmsBtn');
   const expenseList = document.getElementById('expenseList');
   const catBreakdown = document.getElementById('catBreakdown');
   const incomeTotalTxt = document.getElementById('incomeTotalTxt');
@@ -1233,9 +1251,15 @@
       return;
     }
     if(res.jm && res.jd && !res.jy) res.jy = getTodayJalali().jy;
+    smsInput.value = '';
     if(res.type === 'expense') handleExpenseSms(res);
     else if(res.type === 'income') handleIncomeSms(res);
     else handleAmbiguousSms(res);
+  });
+
+  clearSmsBtn.addEventListener('click', () => {
+    smsInput.value = '';
+    renderSmsResult('');
   });
 
   addBtn.addEventListener('click', ()=>{
