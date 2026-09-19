@@ -669,6 +669,10 @@
     bookTabs.querySelectorAll('.book-tab').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.book === activeBook);
     });
+    // Defensive refresh: whenever a section becomes visible, make sure it
+    // reflects the currently selected month rather than whatever was last rendered.
+    const active = BOOKS.find(b => b.key === activeBook);
+    if(active && sections[active.key]) render(active, sections[active.key]);
   }
 
   function buildBookTabs(){
@@ -1249,7 +1253,7 @@
     addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
     refs.amountInput.value = res.amount.toLocaleString('en-US');
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
-    render(book, refs);
+    renderAll(); // the month selector is shared across books, so refresh both
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
       '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>' +
@@ -1262,7 +1266,7 @@
   function handleIncomeSms(book, refs, res){
     addLedgerEntry(book.key, refs, 'in', res.amount, res.jy, res.jm, res.jd);
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
-    render(book, refs);
+    renderAll(); // the month selector is shared across books, so refresh both
     const buttons = book.contributors.map(c =>
       '<button type="button" class="sms-choice-btn" data-key="' + c.key + '">' + c.label + '</button>'
     ).join('');
