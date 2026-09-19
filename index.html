@@ -391,6 +391,36 @@
     margin-top: 6px;
   }
 
+  .ledger-warn{
+    color: var(--brick);
+    font-weight:700;
+    font-size: 12.5px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+  }
+  .ledger-sub{
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .danger-btn{
+    width:100%;
+    background: transparent;
+    color: var(--brick);
+    border: 1.5px solid var(--brick);
+    border-radius: 9px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .danger-btn:active{
+    background: var(--brick);
+    color: var(--paper);
+  }
+
   #installBar{
     display:none;
     align-items:center;
@@ -413,6 +443,30 @@
     font-size: 12.5px;
     font-weight:700;
   }
+
+  .book-section{
+    margin-bottom: 26px;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--gold-soft);
+  }
+  .book-section:last-child{ border-bottom: none; }
+  .book-section-head{
+    display:flex;
+    align-items:baseline;
+    justify-content: space-between;
+    gap:8px;
+    margin: 4px 2px 12px;
+  }
+  .book-section-head h2{
+    margin:0;
+    font-size: 16px;
+    font-weight:800;
+    color: var(--navy);
+  }
+  .book-section-head .ledger-sub{
+    font-weight:700;
+    color: var(--gold);
+  }
 </style>
 </head>
 <body>
@@ -425,78 +479,13 @@
 
   <div class="ledger-head">
     <h1>دفتر خرج خانه</h1>
-    <p id="bookSubtitle">حساب‌وکتاب ماهانه خانواده</p>
+    <p>دو دفتر مستقل: سپه (مریم، سارا، پارسا) و ملت (رضا، AZERTIM)</p>
     <div class="month-row">
       <select id="monthSelect"></select>
     </div>
   </div>
 
-  <div class="book-tabs" id="bookTabs"></div>
-
-  <div class="card">
-    <h2>واریزی‌های این ماه</h2>
-    <div class="contributors" id="contributorsBox"></div>
-    <div class="income-total">
-      <span>جمع واریزی</span>
-      <b id="incomeTotalTxt">۰ ریال</b>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>دریافت خودکار از پیامک بانک</h2>
-    <div class="form-grid">
-      <textarea id="smsInput" rows="3" placeholder="متن پیامک بانک را اینجا کپی و پیست کنید"></textarea>
-      <div class="two-col">
-        <button class="add-btn" id="parseSmsBtn" type="button">استخراج از پیامک</button>
-        <button class="clear-btn" id="clearSmsBtn" type="button">پاک کردن</button>
-      </div>
-      <div id="smsResult"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>ثبت هزینه جدید</h2>
-    <div class="form-grid">
-      <select id="mainCatSelect"></select>
-      <select id="subCatSelect"></select>
-      <input id="amountInput" type="text" inputmode="numeric" placeholder="مبلغ (ریال)">
-      <div class="jalali-date-row">
-        <select id="jDaySelect"></select>
-        <select id="jMonthSelect"></select>
-        <select id="jYearSelect"></select>
-      </div>
-      <input id="noteInput" type="text" placeholder="توضیح (اختیاری)">
-      <button class="add-btn" id="addBtn">افزودن هزینه</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>هزینه‌های ثبت‌شده</h2>
-    <div id="expenseList"></div>
-  </div>
-
-  <div class="card">
-    <h2>سهم هر دسته از هزینه‌ها</h2>
-    <div id="catBreakdown"></div>
-  </div>
-
-  <div class="card">
-    <h2>جمع‌بندی ماه</h2>
-    <div class="summary-grid">
-      <div class="summary-box income">
-        <div class="lbl">واریزی</div>
-        <div class="num" id="sumIncome">۰</div>
-      </div>
-      <div class="summary-box expense">
-        <div class="lbl">هزینه</div>
-        <div class="num" id="sumExpense">۰</div>
-      </div>
-      <div class="summary-box balance">
-        <div class="lbl">مانده</div>
-        <div class="num" id="sumBalance">۰</div>
-      </div>
-    </div>
-  </div>
+  <div id="bookSections"></div>
 
   <div class="footnote">اطلاعات فقط روی همین گوشی شما ذخیره می‌شود</div>
 </div>
@@ -625,27 +614,18 @@
   }
 
   const BOOKS = [
-    { key: 'book1', label: 'مریم، سارا و پارسا', contributors: [
+    { key: 'book1', label: 'مریم، سارا و پارسا', bank: 'بانک سپه', contributors: [
       { key: 'maryam', label: 'مریم' },
       { key: 'sara', label: 'سارا' },
       { key: 'parsa', label: 'پارسا' },
     ]},
-    { key: 'book2', label: 'رضا و AZERTIM', contributors: [
+    { key: 'book2', label: 'رضا و AZERTIM', bank: 'بانک ملت', contributors: [
       { key: 'reza', label: 'رضا' },
       { key: 'azertim', label: 'AZERTIM' },
     ]},
   ];
-  let currentBook = 'book1';
-
-  function currentBookDef(){
-    return BOOKS.find(b => b.key === currentBook) || BOOKS[0];
-  }
-  function currentContributors(){
-    return currentBookDef().contributors;
-  }
 
   const STORAGE_KEY = 'family-budget-v1';
-  const CURRENT_BOOK_KEY = 'family-budget-current-book-v1';
   let data = { books: { book1: { months: {} }, book2: { months: {} } } };
   let bookAccounts = { book1: null, book2: null };
 
@@ -658,50 +638,9 @@
     }
   }
 
-  function saveAccountNumber(acc){
-    bookAccounts[currentBook] = acc;
-    try{ localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(bookAccounts)); }
-    catch(e){}
-  }
-
-  function currentSavedAccount(){
-    return bookAccounts[currentBook] || null;
-  }
-
-  function loadCurrentBook(){
-    try{
-      const saved = localStorage.getItem(CURRENT_BOOK_KEY);
-      if(saved && BOOKS.some(b => b.key === saved)) currentBook = saved;
-    }catch(e){}
-  }
-
-  function persistCurrentBook(){
-    try{ localStorage.setItem(CURRENT_BOOK_KEY, currentBook); }
-    catch(e){}
-  }
-
-  const bookTabs = document.getElementById('bookTabs');
-  const bookSubtitle = document.getElementById('bookSubtitle');
   const monthSelect = document.getElementById('monthSelect');
-  const contributorsBox = document.getElementById('contributorsBox');
-  const mainCatSelect = document.getElementById('mainCatSelect');
-  const subCatSelect = document.getElementById('subCatSelect');
-  const amountInput = document.getElementById('amountInput');
-  const jDaySelect = document.getElementById('jDaySelect');
-  const jMonthSelect = document.getElementById('jMonthSelect');
-  const jYearSelect = document.getElementById('jYearSelect');
-  const noteInput = document.getElementById('noteInput');
-  const addBtn = document.getElementById('addBtn');
-  const smsInput = document.getElementById('smsInput');
-  const parseSmsBtn = document.getElementById('parseSmsBtn');
-  const smsResult = document.getElementById('smsResult');
-  const clearSmsBtn = document.getElementById('clearSmsBtn');
-  const expenseList = document.getElementById('expenseList');
-  const catBreakdown = document.getElementById('catBreakdown');
-  const incomeTotalTxt = document.getElementById('incomeTotalTxt');
-  const sumIncome = document.getElementById('sumIncome');
-  const sumExpense = document.getElementById('sumExpense');
-  const sumBalance = document.getElementById('sumBalance');
+  const bookSectionsRoot = document.getElementById('bookSections');
+  const sections = {}; // bookKey -> element refs, filled in by initBookSection()
 
   const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 
@@ -819,57 +758,57 @@
     monthSelect.value = jMonthKey(todayJ.jy, todayJ.jm);
   }
 
-  function populateDaySelect(jy, jm, preferredDay){
+  function populateDaySelect(refs, jy, jm, preferredDay){
     const days = daysInJalaliMonth(jy, jm);
-    const current = preferredDay || Number(jDaySelect.value) || 1;
-    jDaySelect.innerHTML = '';
+    const current = preferredDay || Number(refs.jDaySelect.value) || 1;
+    refs.jDaySelect.innerHTML = '';
     for(let d = 1; d <= days; d++){
       const opt = document.createElement('option');
       opt.value = d;
       opt.textContent = d;
-      jDaySelect.appendChild(opt);
+      refs.jDaySelect.appendChild(opt);
     }
-    jDaySelect.value = Math.min(current, days);
+    refs.jDaySelect.value = Math.min(current, days);
   }
 
-  function buildJalaliDateInputs(){
+  function buildJalaliDateInputs(refs){
     const todayJ = getTodayJalali();
 
-    jMonthSelect.innerHTML = '';
+    refs.jMonthSelect.innerHTML = '';
     JALALI_MONTHS.forEach((name, idx) => {
       const opt = document.createElement('option');
       opt.value = idx + 1;
       opt.textContent = name;
-      jMonthSelect.appendChild(opt);
+      refs.jMonthSelect.appendChild(opt);
     });
-    jMonthSelect.value = todayJ.jm;
+    refs.jMonthSelect.value = todayJ.jm;
 
-    jYearSelect.innerHTML = '';
+    refs.jYearSelect.innerHTML = '';
     for(let y = todayJ.jy - 5; y <= todayJ.jy + 1; y++){
       const opt = document.createElement('option');
       opt.value = y;
       opt.textContent = y;
-      jYearSelect.appendChild(opt);
+      refs.jYearSelect.appendChild(opt);
     }
-    jYearSelect.value = todayJ.jy;
+    refs.jYearSelect.value = todayJ.jy;
 
-    populateDaySelect(todayJ.jy, todayJ.jm, todayJ.jd);
+    populateDaySelect(refs, todayJ.jy, todayJ.jm, todayJ.jd);
 
-    const onYearOrMonthChange = () => populateDaySelect(Number(jYearSelect.value), Number(jMonthSelect.value));
-    jYearSelect.addEventListener('change', onYearOrMonthChange);
-    jMonthSelect.addEventListener('change', onYearOrMonthChange);
+    const onYearOrMonthChange = () => populateDaySelect(refs, Number(refs.jYearSelect.value), Number(refs.jMonthSelect.value));
+    refs.jYearSelect.addEventListener('change', onYearOrMonthChange);
+    refs.jMonthSelect.addEventListener('change', onYearOrMonthChange);
   }
 
-  function selectedJalaliDateStr(){
-    const jy = jYearSelect.value;
-    const jm = String(jMonthSelect.value).padStart(2, '0');
-    const jd = String(jDaySelect.value).padStart(2, '0');
+  function selectedJalaliDateStr(refs){
+    const jy = refs.jYearSelect.value;
+    const jm = String(refs.jMonthSelect.value).padStart(2, '0');
+    const jd = String(refs.jDaySelect.value).padStart(2, '0');
     return jy + '-' + jm + '-' + jd;
   }
 
-  function buildContributorInputs(){
-    contributorsBox.innerHTML = '';
-    currentContributors().forEach(c=>{
+  function buildContributorInputs(book, refs){
+    refs.contributorsBox.innerHTML = '';
+    book.contributors.forEach(c=>{
       const row = document.createElement('div');
       row.className = 'contrib-row';
       row.innerHTML = `
@@ -877,58 +816,36 @@
         <input type="text" inputmode="numeric" data-key="${c.key}" placeholder="0">
         <span class="unit">ریال</span>
       `;
-      contributorsBox.appendChild(row);
+      refs.contributorsBox.appendChild(row);
     });
-    contributorsBox.querySelectorAll('input').forEach(inp=>{
+    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
       attachThousandsFormatting(inp);
-      inp.addEventListener('input', onIncomeChange);
+      inp.addEventListener('input', () => onIncomeChange(book, refs));
     });
-    renderContributors();
+    renderContributors(book, refs);
   }
 
-  function buildBookTabs(){
-    bookTabs.innerHTML = '';
-    BOOKS.forEach(b => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'book-tab' + (b.key === currentBook ? ' active' : '');
-      btn.textContent = b.label;
-      btn.addEventListener('click', () => {
-        if(currentBook === b.key) return;
-        currentBook = b.key;
-        persistCurrentBook();
-        buildBookTabs();
-        buildContributorInputs();
-        smsInput.value = '';
-        renderSmsResult('');
-        render();
-      });
-      bookTabs.appendChild(btn);
-    });
-    bookSubtitle.textContent = 'دفتر: ' + currentBookDef().label;
-  }
-
-  function populateSubCatSelect(mainKey){
+  function populateSubCatSelect(refs, mainKey){
     const group = CATEGORIES.find(g => g.key === mainKey) || CATEGORIES[0];
-    subCatSelect.innerHTML = '';
+    refs.subCatSelect.innerHTML = '';
     group.subs.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.key;
       opt.textContent = s.label;
-      subCatSelect.appendChild(opt);
+      refs.subCatSelect.appendChild(opt);
     });
   }
 
-  function buildCatSelect(){
-    mainCatSelect.innerHTML = '';
+  function buildCatSelect(refs){
+    refs.mainCatSelect.innerHTML = '';
     CATEGORIES.forEach(g => {
       const opt = document.createElement('option');
       opt.value = g.key;
       opt.textContent = g.label;
-      mainCatSelect.appendChild(opt);
+      refs.mainCatSelect.appendChild(opt);
     });
-    populateSubCatSelect(CATEGORIES[0].key);
-    mainCatSelect.addEventListener('change', () => populateSubCatSelect(mainCatSelect.value));
+    populateSubCatSelect(refs, CATEGORIES[0].key);
+    refs.mainCatSelect.addEventListener('change', () => populateSubCatSelect(refs, refs.mainCatSelect.value));
   }
 
   function getMonthData(bookKey, key){
@@ -951,6 +868,33 @@
     }
   }
 
+  // ---- Bank account ledger (gardesh-e hesab): running balance per book,
+  // fed automatically from every parsed SMS (deposit or withdrawal), independent
+  // of the monthly income/expense breakdown, and completely separate per book.
+  function getLedger(bookKey){
+    const book = data.books[bookKey];
+    if(!book.ledger) book.ledger = { opening: 0, entries: [] };
+    return book.ledger;
+  }
+
+  function addLedgerEntry(bookKey, refs, type, amount, jy, jm, jd){
+    if(!amount || amount <= 0) return;
+    const l = getLedger(bookKey);
+    const date = (jy && jm && jd) ? (jy + '-' + String(jm).padStart(2,'0') + '-' + String(jd).padStart(2,'0')) : selectedJalaliDateStr(refs);
+    l.entries.push({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      type: type, // 'in' | 'out'
+      amount: amount,
+      date: date
+    });
+    saveData();
+  }
+
+  function ledgerBalance(bookKey){
+    const l = getLedger(bookKey);
+    return (l.entries || []).reduce((bal, e) => bal + (e.type === 'in' ? e.amount : -e.amount), (Number(l.opening) || 0));
+  }
+
   function loadData(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -969,31 +913,31 @@
     }
   }
 
-  function onIncomeChange(){
+  function onIncomeChange(book, refs){
     const key = monthSelect.value;
-    const m = getMonthData(currentBook, key);
-    contributorsBox.querySelectorAll('input').forEach(inp=>{
+    const m = getMonthData(book.key, key);
+    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
       m.income[inp.dataset.key] = getRawNumber(inp);
     });
     saveData();
-    render();
+    render(book, refs);
   }
 
-  function renderContributors(){
+  function renderContributors(book, refs){
     const key = monthSelect.value;
-    const m = getMonthData(currentBook, key);
-    contributorsBox.querySelectorAll('input').forEach(inp=>{
+    const m = getMonthData(book.key, key);
+    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
       const v = m.income[inp.dataset.key]||0;
       inp.value = v === 0 ? '' : v.toLocaleString('en-US');
     });
   }
 
-  function renderExpenseList(){
+  function renderExpenseList(book, refs){
     const key = monthSelect.value;
-    const m = getMonthData(currentBook, key);
-    expenseList.innerHTML = '';
+    const m = getMonthData(book.key, key);
+    refs.expenseList.innerHTML = '';
     if(m.expenses.length === 0){
-      expenseList.innerHTML = '<div class="empty-note">هنوز هزینه‌ای برای این ماه ثبت نشده</div>';
+      refs.expenseList.innerHTML = '<div class="empty-note">هنوز هزینه‌ای برای این ماه ثبت نشده</div>';
       return;
     }
     const sorted = [...m.expenses].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
@@ -1010,34 +954,34 @@
         <span class="expense-amt">${fmt(exp.amount)}</span>
         <button class="del-btn" data-id="${exp.id}">✕</button>
       `;
-      expenseList.appendChild(row);
+      refs.expenseList.appendChild(row);
     });
-    expenseList.querySelectorAll('.del-btn').forEach(btn=>{
+    refs.expenseList.querySelectorAll('.del-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const id = btn.dataset.id;
         m.expenses = m.expenses.filter(e=> String(e.id) !== id);
         saveData();
-        render();
+        render(book, refs);
       });
     });
   }
 
-  function renderBreakdownAndSummary(){
+  function renderBreakdownAndSummary(book, refs){
     const key = monthSelect.value;
-    const m = getMonthData(currentBook, key);
+    const m = getMonthData(book.key, key);
 
-    const totalIncome = currentContributors().reduce((s,c)=> s + (m.income[c.key]||0), 0);
+    const totalIncome = book.contributors.reduce((s,c)=> s + (m.income[c.key]||0), 0);
     const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
     const balance = totalIncome - totalExpense;
 
-    incomeTotalTxt.textContent = fmt(totalIncome) + ' ریال';
-    sumIncome.textContent = fmt(totalIncome);
-    sumExpense.textContent = fmt(totalExpense);
-    sumBalance.textContent = fmt(balance);
-    sumBalance.classList.remove('balance-pos','balance-neg');
-    sumBalance.classList.add(balance >= 0 ? 'balance-pos' : 'balance-neg');
+    refs.incomeTotalTxt.textContent = fmt(totalIncome) + ' ریال';
+    refs.sumIncome.textContent = fmt(totalIncome);
+    refs.sumExpense.textContent = fmt(totalExpense);
+    refs.sumBalance.textContent = fmt(balance);
+    refs.sumBalance.classList.remove('balance-pos','balance-neg');
+    refs.sumBalance.classList.add(balance >= 0 ? 'balance-pos' : 'balance-neg');
 
-    catBreakdown.innerHTML = '';
+    refs.catBreakdown.innerHTML = '';
     const byCat = {};
     CATEGORIES.forEach(c=> byCat[c.key]=0);
     m.expenses.forEach(e=>{
@@ -1047,7 +991,7 @@
 
     const anyExpense = totalExpense > 0;
     if(!anyExpense){
-      catBreakdown.innerHTML = '<div class="empty-note">با ثبت هزینه، نمودار سهم هر دسته اینجا نمایش داده می‌شود</div>';
+      refs.catBreakdown.innerHTML = '<div class="empty-note">با ثبت هزینه، نمودار سهم هر دسته اینجا نمایش داده می‌شود</div>';
       return;
     }
 
@@ -1064,17 +1008,79 @@
         </div>
         <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
       `;
-      catBreakdown.appendChild(row);
+      refs.catBreakdown.appendChild(row);
     });
   }
 
-  function render(){
-    renderContributors();
-    renderExpenseList();
-    renderBreakdownAndSummary();
+  function renderLedger(book, refs){
+    const l = getLedger(book.key);
+    refs.ledgerOpeningInput.value = l.opening ? Number(l.opening).toLocaleString('en-US') : '';
+
+    const balance = ledgerBalance(book.key);
+    refs.ledgerBalanceTxt.textContent = fmt(balance) + ' ریال';
+    refs.ledgerBalanceTxt.classList.remove('balance-pos','balance-neg');
+    refs.ledgerBalanceTxt.classList.add(balance > 0 ? 'balance-pos' : 'balance-neg');
+
+    if(balance <= 0){
+      refs.ledgerZeroWarning.style.display = 'block';
+      refs.ledgerZeroWarning.textContent = balance === 0
+        ? '⚠️ موجودی این حساب به صفر رسیده است.'
+        : '⚠️ موجودی این حساب منفی شده است.';
+    } else {
+      refs.ledgerZeroWarning.style.display = 'none';
+    }
+
+    refs.ledgerList.innerHTML = '';
+    if(!l.entries.length){
+      refs.ledgerList.innerHTML = '<div class="empty-note">هنوز پیامکی برای این حساب ثبت نشده</div>';
+      return;
+    }
+
+    // Walk chronologically (oldest first) to compute each entry's running balance,
+    // then show newest-first like the expense list.
+    const chrono = [...l.entries].sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.id > b.id ? 1 : -1));
+    let running = Number(l.opening) || 0;
+    const withRunning = chrono.map(e => {
+      running += e.type === 'in' ? e.amount : -e.amount;
+      return { e, running };
+    });
+
+    [...withRunning].reverse().forEach(({ e, running }) => {
+      const row = document.createElement('div');
+      row.className = 'expense-item';
+      const color = e.type === 'in' ? 'var(--good)' : 'var(--brick)';
+      row.innerHTML = `
+        <span class="cat-dot" style="background:${color}"></span>
+        <div class="expense-info">
+          <div class="cat">${e.type === 'in' ? 'واریز پیامکی' : 'برداشت پیامکی'}</div>
+          <div class="note">${formatJalaliDate(e.date)} · مانده: ${fmt(running)} ریال</div>
+        </div>
+        <span class="expense-amt" style="color:${color}">${e.type === 'in' ? '+' : '−'}${fmt(e.amount)}</span>
+        <button class="del-btn" data-id="${e.id}">✕</button>
+      `;
+      refs.ledgerList.appendChild(row);
+    });
+    refs.ledgerList.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        l.entries = l.entries.filter(x => String(x.id) !== btn.dataset.id);
+        saveData();
+        renderLedger(book, refs);
+      });
+    });
   }
 
-  // ---- Bank SMS parsing ----
+  function render(book, refs){
+    renderContributors(book, refs);
+    renderExpenseList(book, refs);
+    renderBreakdownAndSummary(book, refs);
+    renderLedger(book, refs);
+  }
+
+  function renderAll(){
+    BOOKS.forEach(b => render(b, sections[b.key]));
+  }
+
+  // ---- Bank SMS parsing (pure text-processing, no book/DOM dependency) ----
   const ACCOUNT_STORAGE_KEY = 'family-budget-account-v1';
 
   function normalizeDigits(str){
@@ -1153,150 +1159,307 @@
     return { type, amount, jy, jm, jd, account };
   }
 
-  function applyParsedDateToForm(jy, jm, jd){
+  function applyParsedDateToForm(refs, jy, jm, jd){
     if(!jy || !jm || !jd) return;
-    const exists = [...jYearSelect.children].some(o => Number(o.value) === jy);
-    if(exists) jYearSelect.value = jy;
-    jMonthSelect.value = jm;
-    populateDaySelect(jy, jm, jd);
+    const exists = [...refs.jYearSelect.children].some(o => Number(o.value) === jy);
+    if(exists) refs.jYearSelect.value = jy;
+    refs.jMonthSelect.value = jm;
+    populateDaySelect(refs, jy, jm, jd);
     const key = jMonthKey(jy, jm);
     const monthExists = [...monthSelect.children].some(o => o.value === key);
     if(monthExists) monthSelect.value = key;
   }
 
-  function renderSmsResult(html){
-    smsResult.innerHTML = html;
+  function renderSmsResult(refs, html){
+    refs.smsResult.innerHTML = html;
   }
 
-  function accountStatusHtml(account){
+  function accountStatusHtml(book, account){
     if(!account) return '';
-    const saved = currentSavedAccount();
+    const saved = bookAccounts[book.key] || null;
     if(!saved){
       return '<div class="sms-line">شماره حساب شناسایی‌شده: ...' + account.slice(-4) +
-        ' &nbsp; <button type="button" class="sms-choice-btn secondary" id="smsSaveAccount" data-acc="' + account + '">تنظیم به‌عنوان حساب ' + currentBookDef().label + '</button></div>';
+        ' &nbsp; <button type="button" class="sms-choice-btn secondary" data-save-acc="' + account + '">تنظیم به‌عنوان حساب ' + book.label + '</button></div>';
     }
     if(account !== saved){
-      return '<div class="sms-line sms-warn">⚠️ این پیامک از حسابی غیر از حساب ثبت‌شده برای «' + currentBookDef().label + '» است.</div>';
+      return '<div class="sms-line sms-warn">⚠️ این پیامک از حسابی غیر از حساب ثبت‌شده برای «' + book.label + '» است.</div>';
     }
     return '';
   }
 
-  function bindAccountStatusButton(){
-    const btn = document.getElementById('smsSaveAccount');
+  function bindAccountStatusButton(book, refs){
+    const btn = refs.smsResult.querySelector('[data-save-acc]');
     if(btn){
       btn.addEventListener('click', () => {
-        saveAccountNumber(btn.dataset.acc);
-        renderSmsResult('<div class="sms-line sms-ok">این حساب برای «' + currentBookDef().label + '» ذخیره شد. از این پس پیامک‌های حساب‌های دیگر با هشدار مشخص می‌شوند.</div>');
+        bookAccounts[book.key] = btn.dataset.saveAcc;
+        try{ localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(bookAccounts)); }catch(e){}
+        renderSmsResult(refs, '<div class="sms-line sms-ok">این حساب برای «' + book.label + '» ذخیره شد. از این پس پیامک‌های حساب‌های دیگر با هشدار مشخص می‌شوند.</div>');
       });
     }
   }
 
-  function handleExpenseSms(res){
-    amountInput.value = res.amount.toLocaleString('en-US');
-    applyParsedDateToForm(res.jy, res.jm, res.jd);
-    render();
-    renderSmsResult(
-      accountStatusHtml(res.account) +
-      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
-      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
+  function handleExpenseSms(book, refs, res){
+    addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
+    refs.amountInput.value = res.amount.toLocaleString('en-US');
+    applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
+    render(book, refs);
+    renderSmsResult(refs,
+      accountStatusHtml(book, res.account) +
+      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>' +
+      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
     );
-    bindAccountStatusButton();
-    amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    bindAccountStatusButton(book, refs);
+    refs.amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  function handleIncomeSms(res){
-    applyParsedDateToForm(res.jy, res.jm, res.jd);
-    const buttons = currentContributors().map(c =>
+  function handleIncomeSms(book, refs, res){
+    addLedgerEntry(book.key, refs, 'in', res.amount, res.jy, res.jm, res.jd);
+    applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
+    render(book, refs);
+    const buttons = book.contributors.map(c =>
       '<button type="button" class="sms-choice-btn" data-key="' + c.key + '">' + c.label + '</button>'
     ).join('');
-    renderSmsResult(
-      accountStatusHtml(res.account) +
-      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
+    renderSmsResult(refs,
+      accountStatusHtml(book, res.account) +
+      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>' +
       '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
       '<div class="sms-choice-row">' + buttons + '</div>'
     );
-    bindAccountStatusButton();
-    smsResult.querySelectorAll('.sms-choice-btn[data-key]').forEach(btn => {
+    bindAccountStatusButton(book, refs);
+    refs.smsResult.querySelectorAll('.sms-choice-btn[data-key]').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = monthSelect.value;
-        const m = getMonthData(currentBook, key);
+        const m = getMonthData(book.key, key);
         m.income[btn.dataset.key] = (m.income[btn.dataset.key] || 0) + res.amount;
         saveData();
-        render();
-        const person = currentContributors().find(c => c.key === btn.dataset.key);
-        renderSmsResult('<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد.</div>');
-        smsInput.value = '';
+        render(book, refs);
+        const person = book.contributors.find(c => c.key === btn.dataset.key);
+        renderSmsResult(refs, '<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد.</div>');
+        refs.smsInput.value = '';
       });
     });
   }
 
-  function handleAmbiguousSms(res){
-    renderSmsResult(
-      accountStatusHtml(res.account) +
+  function handleAmbiguousSms(book, refs, res){
+    renderSmsResult(refs,
+      accountStatusHtml(book, res.account) +
       '<div class="sms-line">مبلغ ' + fmt(res.amount) + ' ریال شناسایی شد، اما مشخص نشد برداشت است یا واریز:</div>' +
       '<div class="sms-choice-row">' +
-        '<button type="button" class="sms-choice-btn" id="smsMarkExpense">این هزینه (برداشت) است</button>' +
-        '<button type="button" class="sms-choice-btn secondary" id="smsMarkIncome">این واریزی است</button>' +
+        '<button type="button" class="sms-choice-btn" data-mark="expense">این هزینه (برداشت) است</button>' +
+        '<button type="button" class="sms-choice-btn secondary" data-mark="income">این واریزی است</button>' +
       '</div>'
     );
-    bindAccountStatusButton();
-    document.getElementById('smsMarkExpense').addEventListener('click', () => handleExpenseSms(res));
-    document.getElementById('smsMarkIncome').addEventListener('click', () => handleIncomeSms(res));
+    bindAccountStatusButton(book, refs);
+    refs.smsResult.querySelector('[data-mark="expense"]').addEventListener('click', () => handleExpenseSms(book, refs, res));
+    refs.smsResult.querySelector('[data-mark="income"]').addEventListener('click', () => handleIncomeSms(book, refs, res));
   }
 
-  parseSmsBtn.addEventListener('click', () => {
-    const res = parseBankSms(smsInput.value);
-    if(!res.amount){
-      renderSmsResult(accountStatusHtml(res.account) + '<div class="sms-line sms-warn">مبلغی در متن پیدا نشد. لطفاً متن پیامک را کامل بچسبانید یا مبلغ را دستی وارد کنید.</div>');
-      return;
-    }
-    if(res.jm && res.jd && !res.jy) res.jy = getTodayJalali().jy;
-    smsInput.value = '';
-    if(res.type === 'expense') handleExpenseSms(res);
-    else if(res.type === 'income') handleIncomeSms(res);
-    else handleAmbiguousSms(res);
-  });
+  // ---- Build & wire one independent book section (markup + all event listeners) ----
+  function buildSectionMarkup(book){
+    const k = book.key;
+    return `
+      <div class="book-section" data-book="${k}">
+        <div class="book-section-head"><h2>${book.label}</h2><span class="ledger-sub">${book.bank}</span></div>
 
-  clearSmsBtn.addEventListener('click', () => {
-    smsInput.value = '';
-    renderSmsResult('');
-  });
+        <div class="card">
+          <h2>واریزی‌های این ماه</h2>
+          <div class="contributors" id="contributorsBox-${k}"></div>
+          <div class="income-total">
+            <span>جمع واریزی</span>
+            <b id="incomeTotalTxt-${k}">۰ ریال</b>
+          </div>
+        </div>
 
-  addBtn.addEventListener('click', ()=>{
-    const amount = getRawNumber(amountInput);
-    if(!amount || amount <= 0){
-      amountInput.focus();
-      return;
-    }
-    const key = monthSelect.value;
-    const m = getMonthData(currentBook, key);
-    m.expenses.push({
-      id: Date.now(),
-      mainCat: mainCatSelect.value,
-      subCat: subCatSelect.value,
-      amount: amount,
-      note: noteInput.value.trim(),
-      date: selectedJalaliDateStr()
+        <div class="card">
+          <h2>دریافت خودکار از پیامک بانک (${book.bank})</h2>
+          <div class="form-grid">
+            <textarea id="smsInput-${k}" rows="3" placeholder="متن پیامک بانک را اینجا کپی و پیست کنید"></textarea>
+            <div class="two-col">
+              <button class="add-btn" id="parseSmsBtn-${k}" type="button">استخراج از پیامک</button>
+              <button class="clear-btn" id="clearSmsBtn-${k}" type="button">پاک کردن</button>
+            </div>
+            <div id="smsResult-${k}"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>گردش حساب</h2>
+          <div class="form-grid">
+            <div>
+              <label class="ledger-sub" style="display:block;margin-bottom:5px;">موجودی اولیه ثبت‌شده (ریال)</label>
+              <input id="ledgerOpeningInput-${k}" type="text" inputmode="numeric" placeholder="0">
+            </div>
+          </div>
+          <div class="income-total">
+            <span>موجودی فعلی حساب</span>
+            <b id="ledgerBalanceTxt-${k}">۰ ریال</b>
+          </div>
+          <div id="ledgerZeroWarning-${k}" class="ledger-warn" style="display:none;"></div>
+          <div id="ledgerList-${k}" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card">
+          <h2>ثبت هزینه جدید</h2>
+          <div class="form-grid">
+            <select id="mainCatSelect-${k}"></select>
+            <select id="subCatSelect-${k}"></select>
+            <input id="amountInput-${k}" type="text" inputmode="numeric" placeholder="مبلغ (ریال)">
+            <div class="jalali-date-row">
+              <select id="jDaySelect-${k}"></select>
+              <select id="jMonthSelect-${k}"></select>
+              <select id="jYearSelect-${k}"></select>
+            </div>
+            <input id="noteInput-${k}" type="text" placeholder="توضیح (اختیاری)">
+            <button class="add-btn" id="addBtn-${k}">افزودن هزینه</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>هزینه‌های ثبت‌شده</h2>
+          <div id="expenseList-${k}"></div>
+        </div>
+
+        <div class="card">
+          <h2>سهم هر دسته از هزینه‌ها</h2>
+          <div id="catBreakdown-${k}"></div>
+        </div>
+
+        <div class="card">
+          <h2>جمع‌بندی ماه</h2>
+          <div class="summary-grid">
+            <div class="summary-box income">
+              <div class="lbl">واریزی</div>
+              <div class="num" id="sumIncome-${k}">۰</div>
+            </div>
+            <div class="summary-box expense">
+              <div class="lbl">هزینه</div>
+              <div class="num" id="sumExpense-${k}">۰</div>
+            </div>
+            <div class="summary-box balance">
+              <div class="lbl">مانده</div>
+              <div class="num" id="sumBalance-${k}">۰</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>بازنشانی این بخش</h2>
+          <p class="ledger-sub" style="display:block;margin-bottom:10px;">همه واریزی‌ها، هزینه‌ها و گردش‌حساب «${book.label}» (${book.bank}) برای همیشه پاک می‌شود. روی «رضا و AZERTIM» یا «مریم، سارا و پارسا» بودن این دکمه اثری ندارد؛ فقط همین بخش پاک می‌شود.</p>
+          <button class="danger-btn" id="resetBtn-${k}" type="button">پاک کردن کامل اطلاعات این بخش</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function collectRefs(k){
+    const g = (name) => document.getElementById(name + '-' + k);
+    return {
+      contributorsBox: g('contributorsBox'),
+      incomeTotalTxt: g('incomeTotalTxt'),
+      smsInput: g('smsInput'),
+      parseSmsBtn: g('parseSmsBtn'),
+      clearSmsBtn: g('clearSmsBtn'),
+      smsResult: g('smsResult'),
+      ledgerOpeningInput: g('ledgerOpeningInput'),
+      ledgerBalanceTxt: g('ledgerBalanceTxt'),
+      ledgerZeroWarning: g('ledgerZeroWarning'),
+      ledgerList: g('ledgerList'),
+      mainCatSelect: g('mainCatSelect'),
+      subCatSelect: g('subCatSelect'),
+      amountInput: g('amountInput'),
+      jDaySelect: g('jDaySelect'),
+      jMonthSelect: g('jMonthSelect'),
+      jYearSelect: g('jYearSelect'),
+      noteInput: g('noteInput'),
+      addBtn: g('addBtn'),
+      expenseList: g('expenseList'),
+      catBreakdown: g('catBreakdown'),
+      sumIncome: g('sumIncome'),
+      sumExpense: g('sumExpense'),
+      sumBalance: g('sumBalance'),
+      resetBtn: g('resetBtn'),
+    };
+  }
+
+  function initBookSection(book){
+    const refs = collectRefs(book.key);
+    sections[book.key] = refs;
+
+    attachThousandsFormatting(refs.amountInput);
+    attachThousandsFormatting(refs.ledgerOpeningInput);
+    buildContributorInputs(book, refs);
+    buildCatSelect(refs);
+    buildJalaliDateInputs(refs);
+
+    refs.ledgerOpeningInput.addEventListener('input', () => {
+      const l = getLedger(book.key);
+      l.opening = getRawNumber(refs.ledgerOpeningInput);
+      saveData();
+      renderLedger(book, refs);
     });
-    amountInput.value = '';
-    noteInput.value = '';
-    saveData();
-    render();
-  });
 
-  monthSelect.addEventListener('change', render);
+    refs.addBtn.addEventListener('click', () => {
+      const amount = getRawNumber(refs.amountInput);
+      if(!amount || amount <= 0){
+        refs.amountInput.focus();
+        return;
+      }
+      const key = monthSelect.value;
+      const m = getMonthData(book.key, key);
+      m.expenses.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        mainCat: refs.mainCatSelect.value,
+        subCat: refs.subCatSelect.value,
+        amount: amount,
+        note: refs.noteInput.value.trim(),
+        date: selectedJalaliDateStr(refs)
+      });
+      refs.amountInput.value = '';
+      refs.noteInput.value = '';
+      saveData();
+      render(book, refs);
+    });
+
+    refs.parseSmsBtn.addEventListener('click', () => {
+      const res = parseBankSms(refs.smsInput.value);
+      if(!res.amount){
+        renderSmsResult(refs, accountStatusHtml(book, res.account) + '<div class="sms-line sms-warn">مبلغی در متن پیدا نشد. لطفاً متن پیامک را کامل بچسبانید یا مبلغ را دستی وارد کنید.</div>');
+        return;
+      }
+      if(res.jm && res.jd && !res.jy) res.jy = getTodayJalali().jy;
+      refs.smsInput.value = '';
+      if(res.type === 'expense') handleExpenseSms(book, refs, res);
+      else if(res.type === 'income') handleIncomeSms(book, refs, res);
+      else handleAmbiguousSms(book, refs, res);
+    });
+
+    refs.clearSmsBtn.addEventListener('click', () => {
+      refs.smsInput.value = '';
+      renderSmsResult(refs, '');
+    });
+
+    refs.resetBtn.addEventListener('click', () => {
+      const ok = confirm('همه واریزی‌ها، هزینه‌ها و گردش‌حساب «' + book.label + '» (' + book.bank + ') برای همیشه پاک می‌شود. مطمئنید؟');
+      if(!ok) return;
+      data.books[book.key] = { months: {}, ledger: { opening: 0, entries: [] } };
+      saveData();
+      refs.smsInput.value = '';
+      renderSmsResult(refs, '');
+      render(book, refs);
+    });
+  }
+
+  monthSelect.addEventListener('change', renderAll);
 
   (function init(){
-    attachThousandsFormatting(amountInput);
-    loadCurrentBook();
-    buildBookTabs();
-    buildMonthOptions();
-    buildContributorInputs();
-    buildCatSelect();
-    buildJalaliDateInputs();
     loadData();
     loadSavedAccounts();
-    render();
+    buildMonthOptions();
+    BOOKS.forEach(b => {
+      bookSectionsRoot.insertAdjacentHTML('beforeend', buildSectionMarkup(b));
+    });
+    BOOKS.forEach(b => initBookSection(b));
+    renderAll();
   })();
 
   // ---- PWA install prompt ----

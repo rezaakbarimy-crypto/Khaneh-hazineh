@@ -1,6 +1,6 @@
 // Bump this version string on every future update so the browser detects the
 // changed file, installs a fresh service worker, and evicts the old cache.
-const CACHE_NAME = 'daftar-kharj-v2';
+const CACHE_NAME = 'daftar-kharj-v3';
 const ASSETS = [
   './',
   './index.html',
