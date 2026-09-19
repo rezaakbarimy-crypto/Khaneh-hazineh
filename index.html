@@ -484,6 +484,8 @@
     </div>
   </div>
 
+  <div class="book-tabs" id="bookTabs"></div>
+
   <div id="bookSections"></div>
 
   <div class="footnote">اطلاعات فقط روی همین گوشی شما ذخیره می‌شود</div>
@@ -638,8 +640,54 @@
   }
 
   const monthSelect = document.getElementById('monthSelect');
+  const bookTabs = document.getElementById('bookTabs');
   const bookSectionsRoot = document.getElementById('bookSections');
   const sections = {}; // bookKey -> element refs, filled in by initBookSection()
+
+  // ---- Tab navigation: each book is a fully independent screen; only the
+  // active one is shown at a time, switched by tapping its tab. ----
+  const ACTIVE_BOOK_KEY = 'family-budget-active-book-v1';
+  let activeBook = BOOKS[0].key;
+
+  function loadActiveBook(){
+    try{
+      const saved = localStorage.getItem(ACTIVE_BOOK_KEY);
+      if(saved && BOOKS.some(b => b.key === saved)) activeBook = saved;
+    }catch(e){}
+  }
+
+  function persistActiveBook(){
+    try{ localStorage.setItem(ACTIVE_BOOK_KEY, activeBook); }catch(e){}
+  }
+
+  function applyActiveBook(){
+    BOOKS.forEach(b => {
+      if(sections[b.key] && sections[b.key].root){
+        sections[b.key].root.style.display = (b.key === activeBook) ? '' : 'none';
+      }
+    });
+    bookTabs.querySelectorAll('.book-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.book === activeBook);
+    });
+  }
+
+  function buildBookTabs(){
+    bookTabs.innerHTML = '';
+    BOOKS.forEach(b => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'book-tab';
+      btn.dataset.book = b.key;
+      btn.textContent = b.label;
+      btn.addEventListener('click', () => {
+        if(activeBook === b.key) return;
+        activeBook = b.key;
+        persistActiveBook();
+        applyActiveBook();
+      });
+      bookTabs.appendChild(btn);
+    });
+  }
 
   const JALALI_MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 
@@ -1353,6 +1401,7 @@
   function collectRefs(k){
     const g = (name) => document.getElementById(name + '-' + k);
     return {
+      root: document.querySelector('.book-section[data-book="' + k + '"]'),
       contributorsBox: g('contributorsBox'),
       incomeTotalTxt: g('incomeTotalTxt'),
       smsInput: g('smsInput'),
@@ -1453,11 +1502,14 @@
   (function init(){
     loadData();
     loadSavedAccounts();
+    loadActiveBook();
     buildMonthOptions();
     BOOKS.forEach(b => {
       bookSectionsRoot.insertAdjacentHTML('beforeend', buildSectionMarkup(b));
     });
     BOOKS.forEach(b => initBookSection(b));
+    buildBookTabs();
+    applyActiveBook();
     renderAll();
   })();
 
