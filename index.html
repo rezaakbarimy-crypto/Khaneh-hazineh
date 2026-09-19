@@ -479,7 +479,6 @@
 
   <div class="ledger-head">
     <h1>دفتر خرج خانه</h1>
-    <p>دو دفتر مستقل: سپه (مریم، سارا، پارسا) و ملت (رضا، AZERTIM)</p>
     <div class="month-row">
       <select id="monthSelect"></select>
     </div>
@@ -614,14 +613,14 @@
   }
 
   const BOOKS = [
-    { key: 'book1', label: 'مریم، سارا و پارسا', bank: 'بانک سپه', contributors: [
+    { key: 'book1', label: 'هزینه های خانه و خانواده', bank: 'بانک سپه', contributors: [
       { key: 'maryam', label: 'مریم' },
       { key: 'sara', label: 'سارا' },
       { key: 'parsa', label: 'پارسا' },
     ]},
-    { key: 'book2', label: 'رضا و AZERTIM', bank: 'بانک ملت', contributors: [
-      { key: 'reza', label: 'رضا' },
-      { key: 'azertim', label: 'AZERTIM' },
+    { key: 'book2', label: 'Me + Her ❤️', bank: 'بانک ملت', contributors: [
+      { key: 'reza', label: 'Reza' },
+      { key: 'azertim', label: 'Azertima' },
     ]},
   ];
 
@@ -1259,7 +1258,7 @@
     const k = book.key;
     return `
       <div class="book-section" data-book="${k}">
-        <div class="book-section-head"><h2>${book.label}</h2><span class="ledger-sub">${book.bank}</span></div>
+        <div class="book-section-head"><h2>${book.label}</h2></div>
 
         <div class="card">
           <h2>واریزی‌های این ماه</h2>
@@ -1344,7 +1343,7 @@
 
         <div class="card">
           <h2>بازنشانی این بخش</h2>
-          <p class="ledger-sub" style="display:block;margin-bottom:10px;">همه واریزی‌ها، هزینه‌ها و گردش‌حساب «${book.label}» (${book.bank}) برای همیشه پاک می‌شود. روی «رضا و AZERTIM» یا «مریم، سارا و پارسا» بودن این دکمه اثری ندارد؛ فقط همین بخش پاک می‌شود.</p>
+          <p class="ledger-sub" style="display:block;margin-bottom:10px;">همه واریزی‌ها، هزینه‌ها و گردش‌حساب «${book.label}» (${book.bank}) برای همیشه پاک می‌شود. روی بخش دیگر اثری ندارد؛ فقط همین بخش پاک می‌شود.</p>
           <button class="danger-btn" id="resetBtn-${k}" type="button">پاک کردن کامل اطلاعات این بخش</button>
         </div>
       </div>
