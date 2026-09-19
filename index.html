@@ -929,9 +929,19 @@
   }
 
   function addLedgerEntry(bookKey, refs, type, amount, jy, jm, jd){
-    if(!amount || amount <= 0) return;
+    if(!amount || amount <= 0) return false;
     const l = getLedger(bookKey);
     const date = (jy && jm && jd) ? (jy + '-' + String(jm).padStart(2,'0') + '-' + String(jd).padStart(2,'0')) : selectedJalaliDateStr(refs);
+    // Guard against pasting the exact same SMS twice (very common by accident),
+    // which would otherwise silently double-count the transaction in the balance.
+    const isDuplicate = l.entries.some(e => e.type === type && e.amount === amount && e.date === date);
+    if(isDuplicate){
+      const proceed = confirm(
+        'یک تراکنش مشابه (' + (type === 'in' ? 'واریز' : 'برداشت') + ' ' + fmt(amount) + ' ریال، تاریخ ' + formatJalaliDate(date) + ') قبلاً در گردش حساب ثبت شده.\n' +
+        'احتمالاً همین پیامک قبلاً وارد شده. دوباره هم ثبت شود؟'
+      );
+      if(!proceed) return false;
+    }
     l.entries.push({
       id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       type: type, // 'in' | 'out'
@@ -939,6 +949,7 @@
       date: date
     });
     saveData();
+    return true;
   }
 
   function ledgerBalance(bookKey){
@@ -1154,9 +1165,32 @@
     return normalizeArabicLetters(normalizeDigits(str || ''));
   }
 
+  // Finds a plausible transaction amount in a string, skipping anything that
+  // looks like a card/account/tracking number rather than a Rial amount:
+  //  - a number immediately preceded by "کارت"/"حساب"/"شماره"/"شبا"/"پیگیری" is an identifier, not an amount
+  //  - a number longer than 12 digits (> 999,999,999,999 Rial) is unrealistic for a personal transaction
+  //    and almost certainly a misread card/account/tracking number
   function extractNumberFromText(str){
-    const m = str.match(/(\d{1,3}(?:[,.\u066C]\d{3})+|\d{4,})/);
-    return m ? m[0] : null;
+    const re = /(\d{1,3}(?:[,.\u066C]\d{3})+|\d{4,})/g;
+    let m;
+    while((m = re.exec(str)) !== null){
+      const before = str.slice(Math.max(0, m.index - 16), m.index);
+      if(/(کارت|حساب|شماره|شبا|پیگیری|رهگیری)[^0-9]{0,10}$/.test(before)) continue;
+      const digits = m[0].replace(/[,.\u066C]/g, '');
+      if(digits.length > 12) continue;
+      return m[0];
+    }
+    return null;
+  }
+
+  function extractLabeledAmount(str){
+    // "مبلغ: 250,000" or "به مبلغ 250000" — the most reliable signal, since the
+    // label makes the intent explicit regardless of what else sits on that line.
+    const m = str.match(/(?:به\s*)?مبلغ[:\s]*([\d,.\u066C]{4,})/) || str.match(/به\s*میزان[:\s]*([\d,.\u066C]{4,})/);
+    if(!m) return null;
+    const digits = m[1].replace(/[,.\u066C]/g, '');
+    if(digits.length > 12) return null; // guard against an adjacent card/account number bleeding into the label match
+    return m[1];
   }
 
   function parseBankSms(raw){
@@ -1174,14 +1208,14 @@
     }
     if(withdrawKeywords.test(text) && depositKeywords.test(text) && !txnLine) type = null;
 
-    let amountRaw = txnLine ? extractNumberFromText(txnLine) : null;
-    if(!amountRaw){
-      const mbMatch = text.match(/مبلغ[:\s]*([\d,.\u066C]+)/);
-      if(mbMatch) amountRaw = mbMatch[1];
-    }
+    // Priority 1: an explicitly labeled "مبلغ" amount anywhere in the message — most reliable.
+    let amountRaw = extractLabeledAmount(text);
+    // Priority 2: the transaction line itself, skipping any adjacent card/account/tracking numbers.
+    if(!amountRaw && txnLine) amountRaw = extractNumberFromText(txnLine);
+    // Priority 3: scan remaining lines, skipping ones that are clearly about account/card/balance.
     if(!amountRaw){
       for(const line of lines){
-        if(/حساب|شماره|کارت|موجودی|مانده/.test(line)) continue;
+        if(/حساب|شماره|کارت|موجودی|مانده|شبا/.test(line)) continue;
         const n = extractNumberFromText(line);
         if(n){ amountRaw = n; break; }
       }
@@ -1250,13 +1284,15 @@
   }
 
   function handleExpenseSms(book, refs, res){
-    addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
+    const added = addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
     refs.amountInput.value = res.amount.toLocaleString('en-US');
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
     renderAll(); // the month selector is shared across books, so refresh both
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
-      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>' +
+      (added
+        ? '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>'
+        : '<div class="sms-line sms-warn">این تراکنش دوباره در گردش حساب ثبت نشد.</div>') +
       '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
     );
     bindAccountStatusButton(book, refs);
@@ -1264,7 +1300,7 @@
   }
 
   function handleIncomeSms(book, refs, res){
-    addLedgerEntry(book.key, refs, 'in', res.amount, res.jy, res.jm, res.jd);
+    const added = addLedgerEntry(book.key, refs, 'in', res.amount, res.jy, res.jm, res.jd);
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
     renderAll(); // the month selector is shared across books, so refresh both
     const buttons = book.contributors.map(c =>
@@ -1272,7 +1308,9 @@
     ).join('');
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
-      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>' +
+      (added
+        ? '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>'
+        : '<div class="sms-line sms-warn">این تراکنش دوباره در گردش حساب ثبت نشد.</div>') +
       '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
       '<div class="sms-choice-row">' + buttons + '</div>'
     );
