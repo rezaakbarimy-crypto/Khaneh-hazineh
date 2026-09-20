@@ -421,6 +421,25 @@
     color: var(--paper);
   }
 
+  .kind-btn{
+    flex:1;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight:700;
+    color: var(--ink-soft);
+    cursor:pointer;
+    text-align:center;
+  }
+  .kind-btn.active{
+    background: var(--navy);
+    color: var(--paper);
+    border-color: var(--navy);
+  }
+
   #installBar{
     display:none;
     align-items:center;
@@ -626,6 +645,14 @@
     ]},
   ];
 
+  // Colors for "money given to a person" slices in the breakdown chart —
+  // separate from CATEGORIES' colors so the two kinds stay visually distinct.
+  const PERSON_COLORS = ['#7C5295', '#B0455E', '#3E6E8E', '#8E5B3F', '#4C6B52'];
+  function personColor(book, personKey){
+    const idx = book.contributors.findIndex(c => c.key === personKey);
+    return PERSON_COLORS[idx >= 0 ? idx % PERSON_COLORS.length : 0];
+  }
+
   const STORAGE_KEY = 'family-budget-v1';
   let data = { books: { book1: { months: {} }, book2: { months: {} } } };
   let bookAccounts = { book1: null, book2: null };
@@ -809,71 +836,66 @@
     monthSelect.value = jMonthKey(todayJ.jy, todayJ.jm);
   }
 
-  function populateDaySelect(refs, jy, jm, preferredDay){
+  // ---- Jalali date-select "trio" helper (day+month+year selects) ----
+  // Used twice per book: once for the deposit form, once for the expense form —
+  // each is a plain { day, month, year } object of <select> elements.
+  function populateDaySelectTrio(trio, jy, jm, preferredDay){
     const days = daysInJalaliMonth(jy, jm);
-    const current = preferredDay || Number(refs.jDaySelect.value) || 1;
-    refs.jDaySelect.innerHTML = '';
+    const current = preferredDay || Number(trio.day.value) || 1;
+    trio.day.innerHTML = '';
     for(let d = 1; d <= days; d++){
       const opt = document.createElement('option');
       opt.value = d;
       opt.textContent = d;
-      refs.jDaySelect.appendChild(opt);
+      trio.day.appendChild(opt);
     }
-    refs.jDaySelect.value = Math.min(current, days);
+    trio.day.value = Math.min(current, days);
   }
 
-  function buildJalaliDateInputs(refs){
+  function buildJalaliDateTrio(trio){
     const todayJ = getTodayJalali();
 
-    refs.jMonthSelect.innerHTML = '';
+    trio.month.innerHTML = '';
     JALALI_MONTHS.forEach((name, idx) => {
       const opt = document.createElement('option');
       opt.value = idx + 1;
       opt.textContent = name;
-      refs.jMonthSelect.appendChild(opt);
+      trio.month.appendChild(opt);
     });
-    refs.jMonthSelect.value = todayJ.jm;
+    trio.month.value = todayJ.jm;
 
-    refs.jYearSelect.innerHTML = '';
+    trio.year.innerHTML = '';
     for(let y = todayJ.jy - 5; y <= todayJ.jy + 1; y++){
       const opt = document.createElement('option');
       opt.value = y;
       opt.textContent = y;
-      refs.jYearSelect.appendChild(opt);
+      trio.year.appendChild(opt);
     }
-    refs.jYearSelect.value = todayJ.jy;
+    trio.year.value = todayJ.jy;
 
-    populateDaySelect(refs, todayJ.jy, todayJ.jm, todayJ.jd);
+    populateDaySelectTrio(trio, todayJ.jy, todayJ.jm, todayJ.jd);
 
-    const onYearOrMonthChange = () => populateDaySelect(refs, Number(refs.jYearSelect.value), Number(refs.jMonthSelect.value));
-    refs.jYearSelect.addEventListener('change', onYearOrMonthChange);
-    refs.jMonthSelect.addEventListener('change', onYearOrMonthChange);
+    const onYearOrMonthChange = () => populateDaySelectTrio(trio, Number(trio.year.value), Number(trio.month.value));
+    trio.year.addEventListener('change', onYearOrMonthChange);
+    trio.month.addEventListener('change', onYearOrMonthChange);
   }
 
-  function selectedJalaliDateStr(refs){
-    const jy = refs.jYearSelect.value;
-    const jm = String(refs.jMonthSelect.value).padStart(2, '0');
-    const jd = String(refs.jDaySelect.value).padStart(2, '0');
+  function dateTrioStr(trio){
+    const jy = trio.year.value;
+    const jm = String(trio.month.value).padStart(2, '0');
+    const jd = String(trio.day.value).padStart(2, '0');
     return jy + '-' + jm + '-' + jd;
   }
 
-  function buildContributorInputs(book, refs){
-    refs.contributorsBox.innerHTML = '';
-    book.contributors.forEach(c=>{
-      const row = document.createElement('div');
-      row.className = 'contrib-row';
-      row.innerHTML = `
-        <span class="name">${c.label}</span>
-        <input type="text" inputmode="numeric" data-key="${c.key}" placeholder="0">
-        <span class="unit">ریال</span>
-      `;
-      refs.contributorsBox.appendChild(row);
-    });
-    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
-      attachThousandsFormatting(inp);
-      inp.addEventListener('input', () => onIncomeChange(book, refs));
-    });
-    renderContributors(book, refs);
+  function applyParsedDateToTrio(trio, jy, jm, jd){
+    if(!jy || !jm || !jd) return;
+    const exists = [...trio.year.children].some(o => Number(o.value) === jy);
+    if(exists) trio.year.value = jy;
+    trio.month.value = jm;
+    populateDaySelectTrio(trio, jy, jm, jd);
+    const key = jMonthKey(jy, jm);
+    const monthExists = [...monthSelect.children].some(o => o.value === key);
+    if(monthExists) monthSelect.value = key;
   }
 
   function populateSubCatSelect(refs, mainKey){
@@ -902,11 +924,24 @@
   function getMonthData(bookKey, key){
     const book = data.books[bookKey];
     if(!book.months[key]){
-      const inc = {};
-      BOOKS.find(b => b.key === bookKey).contributors.forEach(c => inc[c.key] = 0);
-      book.months[key] = { income: inc, expenses: [] };
+      book.months[key] = { deposits: [], expenses: [] };
     }
-    return book.months[key];
+    const m = book.months[key];
+    // Migrate the old per-contributor income shape (from before the family-budget
+    // redesign) into a single deposit entry, so past data isn't lost.
+    if(m.income && !m.deposits){
+      const total = Object.values(m.income).reduce((s, v) => s + (Number(v) || 0), 0);
+      m.deposits = [];
+      if(total > 0){
+        m.deposits.push({ id: 'legacy-' + key, amount: total, date: key + '-01', note: 'واریزی‌های قدیمی این ماه (قبل از به‌روزرسانی)' });
+      }
+      delete m.income;
+    }
+    if(!m.deposits) m.deposits = [];
+    if(!m.expenses) m.expenses = [];
+    // Migrate old expenses (all category-based) to carry an explicit "kind".
+    m.expenses.forEach(e => { if(!e.kind) e.kind = 'category'; });
+    return m;
   }
 
   function migrateDataShape(){
@@ -937,7 +972,11 @@
     const book = data.books[bookKey];
     let total = 0;
     Object.values(book.months || {}).forEach(m => {
-      Object.values(m.income || {}).forEach(v => { total += Number(v) || 0; });
+      (m.deposits || []).forEach(d => { total += Number(d.amount) || 0; });
+      // Older months not yet touched via getMonthData() may still be in the
+      // legacy per-contributor shape; count those too so totals stay accurate
+      // even before that month has been opened once.
+      if(m.income){ Object.values(m.income).forEach(v => { total += Number(v) || 0; }); }
     });
     return total;
   }
@@ -974,22 +1013,36 @@
     }
   }
 
-  function onIncomeChange(book, refs){
+  function renderDepositList(book, refs){
     const key = monthSelect.value;
     const m = getMonthData(book.key, key);
-    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
-      m.income[inp.dataset.key] = getRawNumber(inp);
+    refs.depositList.innerHTML = '';
+    if(m.deposits.length === 0){
+      refs.depositList.innerHTML = '<div class="empty-note">هنوز واریزی‌ای برای این ماه ثبت نشده</div>';
+      return;
+    }
+    const sorted = [...m.deposits].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    sorted.forEach(dep=>{
+      const row = document.createElement('div');
+      row.className = 'expense-item';
+      row.innerHTML = `
+        <span class="cat-dot" style="background:var(--good)"></span>
+        <div class="expense-info">
+          <div class="cat">واریزی</div>
+          <div class="note">${dep.note ? dep.note : formatJalaliDate(dep.date)}</div>
+        </div>
+        <span class="expense-amt" style="color:var(--good)">${fmt(dep.amount)}</span>
+        <button class="del-btn" data-id="${dep.id}">✕</button>
+      `;
+      refs.depositList.appendChild(row);
     });
-    saveData();
-    render(book, refs);
-  }
-
-  function renderContributors(book, refs){
-    const key = monthSelect.value;
-    const m = getMonthData(book.key, key);
-    refs.contributorsBox.querySelectorAll('input').forEach(inp=>{
-      const v = m.income[inp.dataset.key]||0;
-      inp.value = v === 0 ? '' : v.toLocaleString('en-US');
+    refs.depositList.querySelectorAll('.del-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.id;
+        m.deposits = m.deposits.filter(d=> String(d.id) !== id);
+        saveData();
+        render(book, refs);
+      });
     });
   }
 
@@ -1003,13 +1056,22 @@
     }
     const sorted = [...m.expenses].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
     sorted.forEach(exp=>{
-      const { group, sub } = resolveExpenseCategory(exp);
+      let label, color;
+      if(exp.kind === 'person'){
+        const person = book.contributors.find(c => c.key === exp.personKey);
+        label = 'پرداخت به ' + (person ? person.label : '؟');
+        color = personColor(book, exp.personKey);
+      } else {
+        const { group, sub } = resolveExpenseCategory(exp);
+        label = group.label + ' &rsaquo; ' + sub.label;
+        color = group.color;
+      }
       const row = document.createElement('div');
       row.className = 'expense-item';
       row.innerHTML = `
-        <span class="cat-dot" style="background:${group.color}"></span>
+        <span class="cat-dot" style="background:${color}"></span>
         <div class="expense-info">
-          <div class="cat">${group.label} &rsaquo; ${sub.label}</div>
+          <div class="cat">${label}</div>
           <div class="note">${exp.note ? exp.note : formatJalaliDate(exp.date)}</div>
         </div>
         <span class="expense-amt">${fmt(exp.amount)}</span>
@@ -1031,7 +1093,7 @@
     const key = monthSelect.value;
     const m = getMonthData(book.key, key);
 
-    const totalIncome = book.contributors.reduce((s,c)=> s + (m.income[c.key]||0), 0);
+    const totalIncome = m.deposits.reduce((s,d)=> s + (Number(d.amount)||0), 0);
     const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
     const balance = totalIncome - totalExpense;
 
@@ -1042,32 +1104,42 @@
     refs.sumBalance.classList.remove('balance-pos','balance-neg');
     refs.sumBalance.classList.add(balance >= 0 ? 'balance-pos' : 'balance-neg');
 
+    // Breakdown combines two kinds of "where the withdrawals went": shared
+    // categories (housing, food, ...) and money given to a specific person —
+    // both reduce the budget, so both show up here as slices.
     refs.catBreakdown.innerHTML = '';
-    const byCat = {};
-    CATEGORIES.forEach(c=> byCat[c.key]=0);
+    const byLabel = {}; // label -> { amount, color }
     m.expenses.forEach(e=>{
-      const { group } = resolveExpenseCategory(e);
-      byCat[group.key] = (byCat[group.key]||0) + (Number(e.amount)||0);
+      let label, color;
+      if(e.kind === 'person'){
+        const person = book.contributors.find(c => c.key === e.personKey);
+        label = 'پرداخت به ' + (person ? person.label : '؟');
+        color = personColor(book, e.personKey);
+      } else {
+        const { group } = resolveExpenseCategory(e);
+        label = group.label;
+        color = group.color;
+      }
+      if(!byLabel[label]) byLabel[label] = { amount: 0, color };
+      byLabel[label].amount += Number(e.amount) || 0;
     });
 
-    const anyExpense = totalExpense > 0;
-    if(!anyExpense){
+    if(totalExpense === 0){
       refs.catBreakdown.innerHTML = '<div class="empty-note">با ثبت هزینه، نمودار سهم هر دسته اینجا نمایش داده می‌شود</div>';
       return;
     }
 
-    CATEGORIES.forEach(c=>{
-      const v = byCat[c.key]||0;
-      if(v === 0) return;
-      const pct = totalExpense > 0 ? Math.round((v/totalExpense)*100) : 0;
+    Object.entries(byLabel).forEach(([label, { amount, color }])=>{
+      if(amount === 0) return;
+      const pct = totalExpense > 0 ? Math.round((amount/totalExpense)*100) : 0;
       const row = document.createElement('div');
       row.className = 'cat-row';
       row.innerHTML = `
         <div class="cat-top">
-          <span class="lbl"><span class="cat-dot" style="background:${c.color}"></span>${c.label}</span>
-          <span class="val">${fmt(v)} ریال · ${pct}%</span>
+          <span class="lbl"><span class="cat-dot" style="background:${color}"></span>${label}</span>
+          <span class="val">${fmt(amount)} ریال · ${pct}%</span>
         </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${c.color}"></div></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${color}"></div></div>
       `;
       refs.catBreakdown.appendChild(row);
     });
@@ -1098,7 +1170,7 @@
   }
 
   function render(book, refs){
-    renderContributors(book, refs);
+    renderDepositList(book, refs);
     renderExpenseList(book, refs);
     renderBreakdownAndSummary(book, refs);
     renderLedger(book, refs);
@@ -1210,17 +1282,6 @@
     return { type, amount, jy, jm, jd, account };
   }
 
-  function applyParsedDateToForm(refs, jy, jm, jd){
-    if(!jy || !jm || !jd) return;
-    const exists = [...refs.jYearSelect.children].some(o => Number(o.value) === jy);
-    if(exists) refs.jYearSelect.value = jy;
-    refs.jMonthSelect.value = jm;
-    populateDaySelect(refs, jy, jm, jd);
-    const key = jMonthKey(jy, jm);
-    const monthExists = [...monthSelect.children].some(o => o.value === key);
-    if(monthExists) monthSelect.value = key;
-  }
-
   function renderSmsResult(refs, html){
     refs.smsResult.innerHTML = html;
   }
@@ -1251,42 +1312,36 @@
 
   function handleExpenseSms(book, refs, res){
     refs.amountInput.value = res.amount.toLocaleString('en-US');
-    applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
+    applyParsedDateToTrio(refs.expenseDate, res.jy, res.jm, res.jd);
     renderAll(); // the month selector is shared across books, so refresh both
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
       '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
-      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید تا هم در فهرست هزینه‌ها و هم در موجودی حساب لحاظ بشه.</div>'
+      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ مشخص کنید هزینهٔ مشترکه یا پرداخت به یک نفر، بعد «افزودن هزینه» را بزنید.</div>'
     );
     bindAccountStatusButton(book, refs);
     refs.amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function handleIncomeSms(book, refs, res){
-    applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
+    // Deposits are family-wide (not attributed to a specific person), so a
+    // recognized deposit SMS is recorded straight away — no extra step needed.
+    applyParsedDateToTrio(refs.depositDate, res.jy, res.jm, res.jd);
+    const key = monthSelect.value; // reflects any month-switch applyParsedDateToTrio just made
+    const m = getMonthData(book.key, key);
+    m.deposits.push({
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      amount: res.amount,
+      note: 'از پیامک بانکی',
+      date: dateTrioStr(refs.depositDate)
+    });
+    saveData();
     renderAll(); // the month selector is shared across books, so refresh both
-    const buttons = book.contributors.map(c =>
-      '<button type="button" class="sms-choice-btn" data-key="' + c.key + '">' + c.label + '</button>'
-    ).join('');
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
-      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
-      '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
-      '<div class="sms-choice-row">' + buttons + '</div>'
+      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی و به بودجه اضافه شد.</div>'
     );
     bindAccountStatusButton(book, refs);
-    refs.smsResult.querySelectorAll('.sms-choice-btn[data-key]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = monthSelect.value;
-        const m = getMonthData(book.key, key);
-        m.income[btn.dataset.key] = (m.income[btn.dataset.key] || 0) + res.amount;
-        saveData();
-        render(book, refs);
-        const person = book.contributors.find(c => c.key === btn.dataset.key);
-        renderSmsResult(refs, '<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد و در موجودی حساب هم لحاظ شد.</div>');
-        refs.smsInput.value = '';
-      });
-    });
   }
 
   function handleAmbiguousSms(book, refs, res){
@@ -1309,10 +1364,24 @@
     return `
       <div class="book-section" data-book="${k}">
         <div class="card">
+          <h2>ثبت واریزی جدید به بودجه</h2>
+          <div class="form-grid">
+            <input id="depositAmountInput-${k}" type="text" inputmode="numeric" placeholder="مبلغ واریزی (ریال)">
+            <div class="jalali-date-row">
+              <select id="depositDaySelect-${k}"></select>
+              <select id="depositMonthSelect-${k}"></select>
+              <select id="depositYearSelect-${k}"></select>
+            </div>
+            <input id="depositNoteInput-${k}" type="text" placeholder="توضیح (اختیاری)">
+            <button class="add-btn" id="depositAddBtn-${k}">افزودن واریزی</button>
+          </div>
+        </div>
+
+        <div class="card">
           <h2>واریزی‌های این ماه</h2>
-          <div class="contributors" id="contributorsBox-${k}"></div>
+          <div id="depositList-${k}"></div>
           <div class="income-total">
-            <span>جمع واریزی</span>
+            <span>جمع واریزی این ماه</span>
             <b id="incomeTotalTxt-${k}">۰ ریال</b>
           </div>
         </div>
@@ -1346,10 +1415,19 @@
         </div>
 
         <div class="card">
-          <h2>ثبت هزینه جدید</h2>
+          <h2>ثبت برداشت / هزینهٔ جدید</h2>
           <div class="form-grid">
-            <select id="mainCatSelect-${k}"></select>
-            <select id="subCatSelect-${k}"></select>
+            <div class="two-col">
+              <button type="button" class="kind-btn active" id="kindCategoryBtn-${k}" data-kind="category">هزینهٔ مشترک</button>
+              <button type="button" class="kind-btn" id="kindPersonBtn-${k}" data-kind="person">پرداخت به یک نفر</button>
+            </div>
+            <div id="categoryFields-${k}">
+              <select id="mainCatSelect-${k}"></select>
+              <select id="subCatSelect-${k}"></select>
+            </div>
+            <div id="personFields-${k}" style="display:none;">
+              <select id="personSelect-${k}"></select>
+            </div>
             <input id="amountInput-${k}" type="text" inputmode="numeric" placeholder="مبلغ (ریال)">
             <div class="jalali-date-row">
               <select id="jDaySelect-${k}"></select>
@@ -1362,12 +1440,12 @@
         </div>
 
         <div class="card">
-          <h2>هزینه‌های ثبت‌شده</h2>
+          <h2>برداشت‌های ثبت‌شده</h2>
           <div id="expenseList-${k}"></div>
         </div>
 
         <div class="card">
-          <h2>سهم هر دسته از هزینه‌ها</h2>
+          <h2>سهم هر دسته و هر نفر از برداشت‌ها</h2>
           <div id="catBreakdown-${k}"></div>
         </div>
 
@@ -1402,7 +1480,11 @@
     const g = (name) => document.getElementById(name + '-' + k);
     return {
       root: document.querySelector('.book-section[data-book="' + k + '"]'),
-      contributorsBox: g('contributorsBox'),
+      depositAmountInput: g('depositAmountInput'),
+      depositNoteInput: g('depositNoteInput'),
+      depositAddBtn: g('depositAddBtn'),
+      depositList: g('depositList'),
+      depositDate: { day: g('depositDaySelect'), month: g('depositMonthSelect'), year: g('depositYearSelect') },
       incomeTotalTxt: g('incomeTotalTxt'),
       smsInput: g('smsInput'),
       parseSmsBtn: g('parseSmsBtn'),
@@ -1412,12 +1494,15 @@
       ledgerBalanceTxt: g('ledgerBalanceTxt'),
       ledgerZeroWarning: g('ledgerZeroWarning'),
       ledgerList: g('ledgerList'),
+      kindCategoryBtn: g('kindCategoryBtn'),
+      kindPersonBtn: g('kindPersonBtn'),
+      categoryFields: g('categoryFields'),
+      personFields: g('personFields'),
+      personSelect: g('personSelect'),
       mainCatSelect: g('mainCatSelect'),
       subCatSelect: g('subCatSelect'),
       amountInput: g('amountInput'),
-      jDaySelect: g('jDaySelect'),
-      jMonthSelect: g('jMonthSelect'),
-      jYearSelect: g('jYearSelect'),
+      expenseDate: { day: g('jDaySelect'), month: g('jMonthSelect'), year: g('jYearSelect') },
       noteInput: g('noteInput'),
       addBtn: g('addBtn'),
       expenseList: g('expenseList'),
@@ -1426,7 +1511,26 @@
       sumExpense: g('sumExpense'),
       sumBalance: g('sumBalance'),
       resetBtn: g('resetBtn'),
+      expenseKind: 'category',
     };
+  }
+
+  function buildPersonSelect(book, refs){
+    refs.personSelect.innerHTML = '';
+    book.contributors.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.label;
+      refs.personSelect.appendChild(opt);
+    });
+  }
+
+  function setExpenseKind(refs, kind){
+    refs.expenseKind = kind;
+    refs.kindCategoryBtn.classList.toggle('active', kind === 'category');
+    refs.kindPersonBtn.classList.toggle('active', kind === 'person');
+    refs.categoryFields.style.display = kind === 'category' ? '' : 'none';
+    refs.personFields.style.display = kind === 'person' ? '' : 'none';
   }
 
   function initBookSection(book){
@@ -1434,16 +1538,42 @@
     sections[book.key] = refs;
 
     attachThousandsFormatting(refs.amountInput);
+    attachThousandsFormatting(refs.depositAmountInput);
     attachThousandsFormatting(refs.ledgerOpeningInput);
-    buildContributorInputs(book, refs);
     buildCatSelect(refs);
-    buildJalaliDateInputs(refs);
+    buildPersonSelect(book, refs);
+    buildJalaliDateTrio(refs.expenseDate);
+    buildJalaliDateTrio(refs.depositDate);
+    setExpenseKind(refs, 'category');
+
+    refs.kindCategoryBtn.addEventListener('click', () => setExpenseKind(refs, 'category'));
+    refs.kindPersonBtn.addEventListener('click', () => setExpenseKind(refs, 'person'));
 
     refs.ledgerOpeningInput.addEventListener('input', () => {
       const l = getLedger(book.key);
       l.opening = getRawNumber(refs.ledgerOpeningInput);
       saveData();
       renderLedger(book, refs);
+    });
+
+    refs.depositAddBtn.addEventListener('click', () => {
+      const amount = getRawNumber(refs.depositAmountInput);
+      if(!amount || amount <= 0){
+        refs.depositAmountInput.focus();
+        return;
+      }
+      const key = monthSelect.value;
+      const m = getMonthData(book.key, key);
+      m.deposits.push({
+        id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        amount: amount,
+        note: refs.depositNoteInput.value.trim(),
+        date: dateTrioStr(refs.depositDate)
+      });
+      refs.depositAmountInput.value = '';
+      refs.depositNoteInput.value = '';
+      saveData();
+      render(book, refs);
     });
 
     refs.addBtn.addEventListener('click', () => {
@@ -1454,17 +1584,23 @@
       }
       const key = monthSelect.value;
       const m = getMonthData(book.key, key);
-      m.expenses.push({
+      const entry = {
         id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-        mainCat: refs.mainCatSelect.value,
-        subCat: refs.subCatSelect.value,
+        kind: refs.expenseKind,
         amount: amount,
         note: refs.noteInput.value.trim(),
-        date: selectedJalaliDateStr(refs)
-      });
+        date: dateTrioStr(refs.expenseDate)
+      };
+      if(refs.expenseKind === 'person'){
+        entry.personKey = refs.personSelect.value;
+      } else {
+        entry.mainCat = refs.mainCatSelect.value;
+        entry.subCat = refs.subCatSelect.value;
+      }
+      m.expenses.push(entry);
       // No separate ledger bookkeeping needed here — the account balance is
-      // computed directly from this same expenses list (see ledgerBalance()),
-      // so it updates automatically and can never fall out of sync.
+      // computed directly from this same deposits/expenses data (see
+      // ledgerBalance()), so it updates automatically and can never fall out of sync.
       refs.amountInput.value = '';
       refs.noteInput.value = '';
       saveData();
