@@ -1287,6 +1287,10 @@
     const added = addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
     refs.amountInput.value = res.amount.toLocaleString('en-US');
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
+    // Remember that this exact amount+date is already reflected in the ledger,
+    // so when the user finishes categorizing it via "افزودن هزینه" we don't
+    // subtract it from the account balance a second time.
+    refs.pendingLedgerLink = added ? { amount: res.amount, date: selectedJalaliDateStr(refs) } : null;
     renderAll(); // the month selector is shared across books, so refresh both
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
@@ -1494,14 +1498,27 @@
       }
       const key = monthSelect.value;
       const m = getMonthData(book.key, key);
+      const dateStr = selectedJalaliDateStr(refs);
       m.expenses.push({
         id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
         mainCat: refs.mainCatSelect.value,
         subCat: refs.subCatSelect.value,
         amount: amount,
         note: refs.noteInput.value.trim(),
-        date: selectedJalaliDateStr(refs)
+        date: dateStr
       });
+
+      // If this expense is the same one just auto-filled from a parsed
+      // withdrawal SMS, it's already in the ledger — don't subtract it again.
+      // Otherwise (typed in manually), record it in the ledger too, so the
+      // account balance always reflects every recorded expense.
+      const link = refs.pendingLedgerLink;
+      const isAlreadyLedgered = link && link.amount === amount && link.date === dateStr;
+      if(!isAlreadyLedgered){
+        addLedgerEntry(book.key, refs, 'out', amount, Number(refs.jYearSelect.value), Number(refs.jMonthSelect.value), Number(refs.jDaySelect.value));
+      }
+      refs.pendingLedgerLink = null;
+
       refs.amountInput.value = '';
       refs.noteInput.value = '';
       saveData();
