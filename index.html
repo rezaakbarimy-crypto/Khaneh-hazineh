@@ -919,42 +919,41 @@
     }
   }
 
-  // ---- Bank account ledger (gardesh-e hesab): running balance per book,
-  // fed automatically from every parsed SMS (deposit or withdrawal), independent
-  // of the monthly income/expense breakdown, and completely separate per book.
+  // ---- Account balance (gardesh-e hesab) ----
+  // Deliberately NOT a separately-tracked list of entries: past versions kept a
+  // parallel "ledger" that had to be manually kept in sync with income/expenses,
+  // and any manually-typed income or expense (not from a parsed SMS) fell out of
+  // sync with it. To make the balance ALWAYS correct by construction, it's instead
+  // computed directly from the exact same income/expense data shown in the monthly
+  // summary, just totaled across every month instead of one — so the two numbers
+  // can never disagree.
   function getLedger(bookKey){
     const book = data.books[bookKey];
-    if(!book.ledger) book.ledger = { opening: 0, entries: [] };
+    if(!book.ledger) book.ledger = { opening: 0 };
     return book.ledger;
   }
 
-  function addLedgerEntry(bookKey, refs, type, amount, jy, jm, jd){
-    if(!amount || amount <= 0) return false;
-    const l = getLedger(bookKey);
-    const date = (jy && jm && jd) ? (jy + '-' + String(jm).padStart(2,'0') + '-' + String(jd).padStart(2,'0')) : selectedJalaliDateStr(refs);
-    // Guard against pasting the exact same SMS twice (very common by accident),
-    // which would otherwise silently double-count the transaction in the balance.
-    const isDuplicate = l.entries.some(e => e.type === type && e.amount === amount && e.date === date);
-    if(isDuplicate){
-      const proceed = confirm(
-        'یک تراکنش مشابه (' + (type === 'in' ? 'واریز' : 'برداشت') + ' ' + fmt(amount) + ' ریال، تاریخ ' + formatJalaliDate(date) + ') قبلاً در گردش حساب ثبت شده.\n' +
-        'احتمالاً همین پیامک قبلاً وارد شده. دوباره هم ثبت شود؟'
-      );
-      if(!proceed) return false;
-    }
-    l.entries.push({
-      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-      type: type, // 'in' | 'out'
-      amount: amount,
-      date: date
+  function allTimeIncome(bookKey){
+    const book = data.books[bookKey];
+    let total = 0;
+    Object.values(book.months || {}).forEach(m => {
+      Object.values(m.income || {}).forEach(v => { total += Number(v) || 0; });
     });
-    saveData();
-    return true;
+    return total;
+  }
+
+  function allTimeExpense(bookKey){
+    const book = data.books[bookKey];
+    let total = 0;
+    Object.values(book.months || {}).forEach(m => {
+      (m.expenses || []).forEach(e => { total += Number(e.amount) || 0; });
+    });
+    return total;
   }
 
   function ledgerBalance(bookKey){
     const l = getLedger(bookKey);
-    return (l.entries || []).reduce((bal, e) => bal + (e.type === 'in' ? e.amount : -e.amount), (Number(l.opening) || 0));
+    return (Number(l.opening) || 0) + allTimeIncome(bookKey) - allTimeExpense(bookKey);
   }
 
   function loadData(){
@@ -1092,43 +1091,10 @@
       refs.ledgerZeroWarning.style.display = 'none';
     }
 
-    refs.ledgerList.innerHTML = '';
-    if(!l.entries.length){
-      refs.ledgerList.innerHTML = '<div class="empty-note">هنوز پیامکی برای این حساب ثبت نشده</div>';
-      return;
-    }
-
-    // Walk chronologically (oldest first) to compute each entry's running balance,
-    // then show newest-first like the expense list.
-    const chrono = [...l.entries].sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.id > b.id ? 1 : -1));
-    let running = Number(l.opening) || 0;
-    const withRunning = chrono.map(e => {
-      running += e.type === 'in' ? e.amount : -e.amount;
-      return { e, running };
-    });
-
-    [...withRunning].reverse().forEach(({ e, running }) => {
-      const row = document.createElement('div');
-      row.className = 'expense-item';
-      const color = e.type === 'in' ? 'var(--good)' : 'var(--brick)';
-      row.innerHTML = `
-        <span class="cat-dot" style="background:${color}"></span>
-        <div class="expense-info">
-          <div class="cat">${e.type === 'in' ? 'واریز پیامکی' : 'برداشت پیامکی'}</div>
-          <div class="note">${formatJalaliDate(e.date)} · مانده: ${fmt(running)} ریال</div>
-        </div>
-        <span class="expense-amt" style="color:${color}">${e.type === 'in' ? '+' : '−'}${fmt(e.amount)}</span>
-        <button class="del-btn" data-id="${e.id}">✕</button>
-      `;
-      refs.ledgerList.appendChild(row);
-    });
-    refs.ledgerList.querySelectorAll('.del-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        l.entries = l.entries.filter(x => String(x.id) !== btn.dataset.id);
-        saveData();
-        renderLedger(book, refs);
-      });
-    });
+    const inTotal = allTimeIncome(book.key);
+    const outTotal = allTimeExpense(book.key);
+    refs.ledgerList.innerHTML =
+      '<div class="empty-note">موجودی اولیه (' + fmt(Number(l.opening) || 0) + ') + مجموع همهٔ واریزی‌ها (' + fmt(inTotal) + ') − مجموع همهٔ هزینه‌های ثبت‌شده (' + fmt(outTotal) + ') در همهٔ ماه‌ها</div>';
   }
 
   function render(book, refs){
@@ -1284,27 +1250,19 @@
   }
 
   function handleExpenseSms(book, refs, res){
-    const added = addLedgerEntry(book.key, refs, 'out', res.amount, res.jy, res.jm, res.jd);
     refs.amountInput.value = res.amount.toLocaleString('en-US');
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
-    // Remember that this exact amount+date is already reflected in the ledger,
-    // so when the user finishes categorizing it via "افزودن هزینه" we don't
-    // subtract it from the account balance a second time.
-    refs.pendingLedgerLink = added ? { amount: res.amount, date: selectedJalaliDateStr(refs) } : null;
     renderAll(); // the month selector is shared across books, so refresh both
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
-      (added
-        ? '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>'
-        : '<div class="sms-line sms-warn">این تراکنش دوباره در گردش حساب ثبت نشد.</div>') +
-      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید.</div>'
+      '<div class="sms-line sms-ok">برداشت ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
+      '<div class="sms-line">مبلغ و تاریخ در فرم «ثبت هزینه جدید» همین بخش پر شد؛ فقط دسته‌بندی و علت هزینه را وارد کنید و «افزودن هزینه» را بزنید تا هم در فهرست هزینه‌ها و هم در موجودی حساب لحاظ بشه.</div>'
     );
     bindAccountStatusButton(book, refs);
     refs.amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function handleIncomeSms(book, refs, res){
-    const added = addLedgerEntry(book.key, refs, 'in', res.amount, res.jy, res.jm, res.jd);
     applyParsedDateToForm(refs, res.jy, res.jm, res.jd);
     renderAll(); // the month selector is shared across books, so refresh both
     const buttons = book.contributors.map(c =>
@@ -1312,9 +1270,7 @@
     ).join('');
     renderSmsResult(refs,
       accountStatusHtml(book, res.account) +
-      (added
-        ? '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی و در گردش حساب «' + book.label + '» ثبت شد.</div>'
-        : '<div class="sms-line sms-warn">این تراکنش دوباره در گردش حساب ثبت نشد.</div>') +
+      '<div class="sms-line sms-ok">واریزی ' + fmt(res.amount) + ' ریال شناسایی شد.</div>' +
       '<div class="sms-line">این مبلغ واریزی مال کدام‌یک است؟</div>' +
       '<div class="sms-choice-row">' + buttons + '</div>'
     );
@@ -1327,7 +1283,7 @@
         saveData();
         render(book, refs);
         const person = book.contributors.find(c => c.key === btn.dataset.key);
-        renderSmsResult(refs, '<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد.</div>');
+        renderSmsResult(refs, '<div class="sms-line sms-ok">' + fmt(res.amount) + ' ریال به واریزی ' + person.label + ' اضافه شد و در موجودی حساب هم لحاظ شد.</div>');
         refs.smsInput.value = '';
       });
     });
@@ -1498,27 +1454,17 @@
       }
       const key = monthSelect.value;
       const m = getMonthData(book.key, key);
-      const dateStr = selectedJalaliDateStr(refs);
       m.expenses.push({
         id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
         mainCat: refs.mainCatSelect.value,
         subCat: refs.subCatSelect.value,
         amount: amount,
         note: refs.noteInput.value.trim(),
-        date: dateStr
+        date: selectedJalaliDateStr(refs)
       });
-
-      // If this expense is the same one just auto-filled from a parsed
-      // withdrawal SMS, it's already in the ledger — don't subtract it again.
-      // Otherwise (typed in manually), record it in the ledger too, so the
-      // account balance always reflects every recorded expense.
-      const link = refs.pendingLedgerLink;
-      const isAlreadyLedgered = link && link.amount === amount && link.date === dateStr;
-      if(!isAlreadyLedgered){
-        addLedgerEntry(book.key, refs, 'out', amount, Number(refs.jYearSelect.value), Number(refs.jMonthSelect.value), Number(refs.jDaySelect.value));
-      }
-      refs.pendingLedgerLink = null;
-
+      // No separate ledger bookkeeping needed here — the account balance is
+      // computed directly from this same expenses list (see ledgerBalance()),
+      // so it updates automatically and can never fall out of sync.
       refs.amountInput.value = '';
       refs.noteInput.value = '';
       saveData();
@@ -1546,7 +1492,7 @@
     refs.resetBtn.addEventListener('click', () => {
       const ok = confirm('همه واریزی‌ها، هزینه‌ها و گردش‌حساب «' + book.label + '» (' + book.bank + ') برای همیشه پاک می‌شود. مطمئنید؟');
       if(!ok) return;
-      data.books[book.key] = { months: {}, ledger: { opening: 0, entries: [] } };
+      data.books[book.key] = { months: {}, ledger: { opening: 0 } };
       saveData();
       refs.smsInput.value = '';
       renderSmsResult(refs, '');
