@@ -1224,40 +1224,48 @@
     });
 
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
-    let html = '<div class="report-section-title">هزینه‌های مشترک</div>';
-    const catKeys = Object.keys(catGroups);
-    if(catKeys.length === 0){
-      html += '<div class="empty-note">هزینهٔ مشترکی این ماه ثبت نشده</div>';
-    } else {
-      catKeys.forEach(ck => {
-        const g = catGroups[ck];
-        html += '<div class="report-group">';
-        html += '<div class="report-group-title"><span class="cat-dot" style="background:' + g.color + '"></span>' + esc(g.label) + '</div>';
-        [...g.items].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(it => {
-          html += '<div class="report-line"><span>' + esc(it.note ? it.note : it.subLabel) + ' · ' + formatJalaliDate(it.date) + '</span><span>' + fmt(it.amount) + '</span></div>';
+    const filter = refs.reportFilter || 'all';
+    let html = '';
+
+    if(filter === 'all' || filter === 'common'){
+      html += '<div class="report-section-title">هزینه‌های مشترک</div>';
+      const catKeys = Object.keys(catGroups);
+      if(catKeys.length === 0){
+        html += '<div class="empty-note">هزینهٔ مشترکی این ماه ثبت نشده</div>';
+      } else {
+        catKeys.forEach(ck => {
+          const g = catGroups[ck];
+          html += '<div class="report-group">';
+          html += '<div class="report-group-title"><span class="cat-dot" style="background:' + g.color + '"></span>' + esc(g.label) + '</div>';
+          [...g.items].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(it => {
+            html += '<div class="report-line"><span>' + esc(it.note ? it.note : it.subLabel) + ' · ' + formatJalaliDate(it.date) + '</span><span>' + fmt(it.amount) + '</span></div>';
+          });
+          html += '<div class="report-subtotal"><span>جمع ' + esc(g.label) + '</span><span>' + fmt(g.total) + ' ریال</span></div>';
+          html += '</div>';
         });
-        html += '<div class="report-subtotal"><span>جمع ' + esc(g.label) + '</span><span>' + fmt(g.total) + ' ریال</span></div>';
-        html += '</div>';
-      });
+      }
     }
 
-    html += '<div class="report-section-title">صورتحساب افراد</div>';
-    const personKeys = Object.keys(personGroups);
-    if(personKeys.length === 0){
-      html += '<div class="empty-note">این ماه پرداختی به کسی ثبت نشده</div>';
-    } else {
-      personKeys.forEach(pk => {
-        const g = personGroups[pk];
-        html += '<div class="report-group">';
-        html += '<div class="report-group-title">' + esc(g.label) + '</div>';
-        [...g.items].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(it => {
-          html += '<div class="report-line"><span>' + (it.note ? esc(it.note) + ' · ' : '') + formatJalaliDate(it.date) + '</span><span>' + fmt(it.amount) + '</span></div>';
+    if(filter === 'all' || filter === 'person'){
+      html += '<div class="report-section-title">صورتحساب افراد</div>';
+      const personKeys = Object.keys(personGroups);
+      if(personKeys.length === 0){
+        html += '<div class="empty-note">این ماه پرداختی به کسی ثبت نشده</div>';
+      } else {
+        personKeys.forEach(pk => {
+          const g = personGroups[pk];
+          html += '<div class="report-group">';
+          html += '<div class="report-group-title">' + esc(g.label) + '</div>';
+          [...g.items].sort((a,b) => (a.date||'').localeCompare(b.date||'')).forEach(it => {
+            html += '<div class="report-line"><span>' + (it.note ? esc(it.note) + ' · ' : '') + formatJalaliDate(it.date) + '</span><span>' + fmt(it.amount) + '</span></div>';
+          });
+          html += '<div class="report-subtotal"><span>جمع پرداختی به ' + esc(g.label) + '</span><span>' + fmt(g.total) + ' ریال</span></div>';
+          html += '</div>';
         });
-        html += '<div class="report-subtotal"><span>جمع پرداختی به ' + esc(g.label) + '</span><span>' + fmt(g.total) + ' ریال</span></div>';
-        html += '</div>';
-      });
+      }
     }
 
+    // Grand total and account balance are always shown, regardless of filter.
     const grandTotal = m.expenses.reduce((s,e) => s + (Number(e.amount) || 0), 0);
     const balance = ledgerBalance(book.key);
     html += '<div class="report-grand"><span>جمع کل هزینه‌های این ماه</span><span>' + fmt(grandTotal) + ' ریال</span></div>';
@@ -1573,6 +1581,11 @@
 
         <div class="card">
           <h2>گزارش این ماه</h2>
+          <div class="two-col" style="margin-bottom:12px;">
+            <button type="button" class="kind-btn active" id="reportFilterAllBtn-${k}" data-filter="all">همه</button>
+            <button type="button" class="kind-btn" id="reportFilterCommonBtn-${k}" data-filter="common">فقط مشترک</button>
+            <button type="button" class="kind-btn" id="reportFilterPersonBtn-${k}" data-filter="person">فقط افراد</button>
+          </div>
           <div id="reportContent-${k}"></div>
         </div>
 
@@ -1635,6 +1648,10 @@
       expenseList: g('expenseList'),
       catBreakdown: g('catBreakdown'),
       reportContent: g('reportContent'),
+      reportFilterAllBtn: g('reportFilterAllBtn'),
+      reportFilterCommonBtn: g('reportFilterCommonBtn'),
+      reportFilterPersonBtn: g('reportFilterPersonBtn'),
+      reportFilter: 'all',
       sumIncome: g('sumIncome'),
       sumExpense: g('sumExpense'),
       sumBalance: g('sumBalance'),
@@ -1676,6 +1693,15 @@
 
     refs.kindCategoryBtn.addEventListener('click', () => setExpenseKind(refs, 'category'));
     refs.kindPersonBtn.addEventListener('click', () => setExpenseKind(refs, 'person'));
+
+    const reportFilterBtns = [refs.reportFilterAllBtn, refs.reportFilterCommonBtn, refs.reportFilterPersonBtn];
+    reportFilterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        refs.reportFilter = btn.dataset.filter;
+        reportFilterBtns.forEach(b => b.classList.toggle('active', b === btn));
+        renderReport(book, refs);
+      });
+    });
 
     refs.ledgerOpeningInput.addEventListener('input', () => {
       const l = getLedger(book.key);
