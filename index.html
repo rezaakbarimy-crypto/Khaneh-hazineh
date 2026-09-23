@@ -1147,14 +1147,17 @@
 
     const totalIncome = m.deposits.reduce((s,d)=> s + (Number(d.amount)||0), 0);
     const totalExpense = m.expenses.reduce((s,e)=> s + (Number(e.amount)||0), 0);
-    const balance = totalIncome - totalExpense;
+    // "مانده" is the account's actual running balance — carried forward from every
+    // previous month, not just this month's deposits minus this month's expenses —
+    // so it always matches "موجودی فعلی حساب" in the گردش حساب card and the report.
+    const accountBalance = ledgerBalance(book.key);
 
     refs.incomeTotalTxt.textContent = fmt(totalIncome) + ' ریال';
     refs.sumIncome.textContent = fmt(totalIncome);
     refs.sumExpense.textContent = fmt(totalExpense);
-    refs.sumBalance.textContent = fmt(balance);
+    refs.sumBalance.textContent = fmt(accountBalance);
     refs.sumBalance.classList.remove('balance-pos','balance-neg');
-    refs.sumBalance.classList.add(balance >= 0 ? 'balance-pos' : 'balance-neg');
+    refs.sumBalance.classList.add(accountBalance >= 0 ? 'balance-pos' : 'balance-neg');
 
     // Breakdown combines two kinds of "where the withdrawals went": shared
     // categories (housing, food, ...) and money given to a specific person —
